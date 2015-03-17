@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import pyfits
 import warnings
 import logging
+
+sys.path.append("../")
 from utility import read_FITS_file
 
 if __name__ == "__main__":

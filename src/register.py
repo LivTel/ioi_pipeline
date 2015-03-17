@@ -72,13 +72,17 @@ class register():
         tmp_filenames = self._write_temporary_data_files(workDir)
         if mask_outs != None:
             tmp_mask_filenames = self._write_temporary_mask_files(workDir)
-        identifications = alipy.ident.run(tmp_filenames[self.ref_image_idx], tmp_filenames, visu=False, verbose=False)
+        try:
+            identifications = alipy.ident.run(tmp_filenames[self.ref_image_idx], tmp_filenames, visu=False, verbose=False)
+        except RuntimeError:
+            self.err.set_code(18 ,is_critical=True)
+            
         for id in identifications:
             if id.ok == True:
                 self.logger.info("[register.execute] Found transform for " + str(id.ukn.name) + ". ")
                 self.logger.info("[register.execute] " + str(id.trans))
             else:
-                self.err.set_code(18, is_warning=True)
+                self.err.set_code(18, is_critical=True)
 
         datas = []
         hdrs  = []

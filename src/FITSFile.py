@@ -79,7 +79,7 @@ class write:
         self.headers = hdr        
         
     def writeFITSFile(self, allow_append):
-        #self.data = self.data.astype(np.float32, copy=False)    # 64->32 bit (float)
+        self.data = self.data.astype(np.float32, copy=False)    # 64->32 bit (float)
         #hdu.scale('int16', bzero=32768)                        # 64->16 bit (int)
         if allow_append and os.path.exists(self.filePath):
             pyfits.append(self.filePath, self.data, self.headers)        

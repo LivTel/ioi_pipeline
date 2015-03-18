@@ -128,6 +128,8 @@ if __name__ == "__main__":
     
     ## plot
     if params['plt']:
+        fig = plt.figure()
+        plt.subplot(2,1,1)
         plt.plot(inttime, data_mean, label='data')
         plt.plot(inttime, np.polyval(fitted_coeffs, inttime), 'b--', label='linear')
         plt.plot([0, max(inttime)], [np.min(data_mean) for i in [0, max(inttime)]], 'r-', label='BIAS = ' + str(np.min(data_mean)) + 'ADU')
@@ -137,8 +139,17 @@ if __name__ == "__main__":
         plt.xlabel("INTTIME (s)")
         plt.ylabel("Mean counts")
         plt.ylim([0,70000])
-
         plt.legend(loc='upper left', fontsize=10)
+        
+        plt.subplot(2,1,2)   
+        plt.plot(data_mean, (abs(np.polyval(fitted_coeffs, inttime)-data_mean)/np.polyval(fitted_coeffs, inttime))*100, label='nonlinearity %')      
+        
+        plt.title("Nonlinearity % (" + str(gain) + "dB)")
+        plt.xlabel("Mean counts (ADU)")
+        plt.ylabel("Nonlinearity %")
+        plt.legend(loc='upper left', fontsize=10)
+        
+        fig.tight_layout()
         plt.savefig("fwd.png")
     
     logger.info("Calculated FWD is " + str(np.max(data_mean) - np.min(data_mean)) + "ADU.")

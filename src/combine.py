@@ -2,6 +2,7 @@ import os
 import pyfits
 import numpy as np
 import time
+from correct_nonlinearity import *
 from utility import write_FITS_file
 
 def jd_to_mjd(jd):

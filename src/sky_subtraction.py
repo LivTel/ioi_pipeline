@@ -62,7 +62,7 @@ class sky_subtraction():
                 ref_sky_value = np.mean(sky_values)     # define reference sky value as mean of first frame clipped dataset                     
             this_sky_value = np.mean(sky_values)        # define this frame's sky value as mean of frame clipped dataset
             offset = this_sky_value - ref_sky_value     # offset is the value required to be subtracted off the current frame in order to match the reference
-            self.logger.info("[sky_subtraction.make_sky_frame] Offset between sky values of frame 1 to sky values of frame " + str(idx+1) + " is " + str(offset)) 
+            self.logger.info("[sky_subtraction.make_sky_frame] Offset between sky values of frame 1 and sky values of frame " + str(idx+1) + " is " + str(offset)) 
             
             data_tmp.append(data_2d-offset)
         self.data_sky = np.median(data_tmp, axis=0) 
@@ -87,7 +87,7 @@ class sky_subtraction():
         this_sky_value = np.mean(sky_values)                    # define this frame's sky value as mean of frame clipped dataset
         offset = this_sky_value - np.median(self.data_sky)      # offset is the value required to be subtracted off the current frame in order to match the sky dataset
         offset_data_sky = self.data_sky+offset                  # or vice versa..
-        self.logger.info("[sky_subtraction.sub_sky] Offset between sky values of median sky frame to this frame is " + str(offset)) 
+        self.logger.info("[sky_subtraction.sub_sky] Offset between sky values of median sky frame and this frame is " + str(offset)) 
         data = data - offset_data_sky
         
         if hard:

@@ -1,5 +1,18 @@
 '''
-calculate gain and read noise from two UTR sequences by making a variance v signal plot.
+calculate gain and read noise by making a variance v signal plot from either:
+a) two UTR sequences (R01 and R02) in the same directory
+b) a series of fowler exposures, with a directory structure like
+
+  PARENT/
+         SUBDIR_1
+         SUBDIR_2
+         SUBDIR_3
+         .
+         .
+         SUBDIR_N
+   where each SUBDIR_? directory (different FS exptimes) contain two ramps.
+   
+note that you will need to set pipeline_gain.ini parameters correctly (NUMBER OF PAIRS!)
 '''
 import sys
 import optparse
@@ -43,13 +56,14 @@ if __name__ == "__main__":
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')
-    group1.add_option('--pi', action='store', default='../../config/pipeline_gain_rmb.ini', type=str, dest='pipeCfgPath', help='path to pipeline config file')     
+    group1.add_option('--pi', action='store', default='../../config/pipeline_gain_UTR_rmb.ini', type=str, dest='pipeCfgPath', help='path to pipeline config file')     
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')      
-    group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
-    group1.add_option('--ghi', action='store', default=20, type=int, dest='maxGrpNum', help='highest group number to use')
+    group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use (method==UTR only)')
+    group1.add_option('--ghi', action='store', default=20, type=int, dest='maxGrpNum', help='highest group number to use (method==UTR only)')
     group1.add_option('--l', action='store', dest='maxLinADU', default=10000, type=float, help='maximum ADU to consider for linear fit')
-    group1.add_option('--win', action='store', dest='windowSize', default=50, type=int, help='size of window to use (px)')  
+    group1.add_option('--win', action='store', dest='windowSize', default=20, type=int, help='size of window to use (px)')  
     group1.add_option('--pl', action='store_true', dest='plt', help='make plot?') 
+    group1.add_option('--m', action='store', dest='method', default='UTR', type=str, help='method (UTR||FOWLER)')
     parser.add_option_group(group1)
     
     options, args = parser.parse_args()
@@ -66,11 +80,12 @@ if __name__ == "__main__":
         'minGrpNum' : int(options.minGrpNum),
         'maxGrpNum' : int(options.maxGrpNum),
         'minExpNum' : 1,
-        'maxExpNum' : 1,        
+        'maxExpNum' : 16,        
         'logLevel' : str(options.logLevel.upper()),
         'maxLinADU' : float(options.maxLinADU),
         'windowSize' : int(options.windowSize),
-        'plt' : bool(options.plt)
+        'plt' : bool(options.plt),
+        'method' : str(options.method)
     }
     
     # console logging
@@ -118,19 +133,39 @@ if __name__ == "__main__":
     f_r2_data  = []
     f_r2_hdr   = []
     f_r2_rates = []
-    for i in range(params['minGrpNum'], params['maxGrpNum']-1):
-        params['minGrpNum'] = params['minGrpNum']
-        params['maxGrpNum'] = i+2
-        
-        pipe = run_pipe(params, logger, err)
-        pipe.go()   
-        
-        f_r1_data.append(pipe.session.file_data_nonss[0][0])
-        f_r1_hdr.append(pipe.session.file_hdr_nonss[0][0])
-        f_r1_rates.append(pipe.session.rates[0][0])
-        f_r2_data.append(pipe.session.file_data_nonss[1][0])
-        f_r2_hdr.append(pipe.session.file_hdr_nonss[1][0]) 
-        f_r2_rates.append(pipe.session.rates[1][0])
+    
+    ## run pipeline with either UTR or FOWLER frames (see note at top for directory format)
+    if params['method'] == 'UTR':
+        for i in range(params['minGrpNum'], params['maxGrpNum']-1):
+            params['minGrpNum'] = params['minGrpNum']
+            params['maxGrpNum'] = i+2
+            
+            pipe = run_pipe(params, logger, err)
+            pipe.go()   
+            
+            f_r1_data.append(pipe.session.file_data_nonss[0][0])
+            f_r1_hdr.append(pipe.session.file_hdr_nonss[0][0])
+            f_r1_rates.append(pipe.session.rates[0][0])
+            f_r2_data.append(pipe.session.file_data_nonss[1][0])
+            f_r2_hdr.append(pipe.session.file_hdr_nonss[1][0]) 
+            f_r2_rates.append(pipe.session.rates[1][0])
+            
+    if params['method'] == 'FOWLER':             
+        params['minGrpNum'] = 1
+        params['maxGrpNum'] = 2    
+        root_params = params['dataPath']
+        for d in os.listdir(params['dataPath']):
+            params['dataPath'] = root_params + d + "/"
+            
+            pipe = run_pipe(params, logger, err)
+            pipe.go()   
+            
+            f_r1_data.append(pipe.session.file_data_nonss[0][0])
+            f_r1_hdr.append(pipe.session.file_hdr_nonss[0][0])
+            f_r1_rates.append(pipe.session.rates[0][0])
+            f_r2_data.append(pipe.session.file_data_nonss[1][0])
+            f_r2_hdr.append(pipe.session.file_hdr_nonss[1][0]) 
+            f_r2_rates.append(pipe.session.rates[1][0])
 
     ## get ASIC gain and frmtime
     gain        = float(pipe.session.file_hdr_nonss[0][0].comments['ASICGAIN'].split('(')[1].split('dB')[0])
@@ -155,8 +190,8 @@ if __name__ == "__main__":
             s2_lo = int(s2)
             s2_hi = int(s2+100+1)
             for i in range(0, len(f_r1_data), 1):
-                f_sect_r1 = f_r1_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r1_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
-                f_sect_r2 = f_r2_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r2_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
+                f_sect_r1 = f_r1_data[i][s1_lo:s1_hi, s2_lo:s2_hi] #+ np.median(f_r1_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
+                f_sect_r2 = f_r2_data[i][s1_lo:s1_hi, s2_lo:s2_hi] #+ np.median(f_r2_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
 
                 ## get means/stds of sections for each file
                 this_mean_r1 = np.mean(f_sect_r1)
@@ -173,7 +208,7 @@ if __name__ == "__main__":
                 this_std_diff = np.std(diff)
 
                 ## calculate shot_and_read_noise component for single frame
-                this_shot_and_read_noise = this_std_diff/pow(2, 0.5)    # taking the difference (CDS) increases noise by sqrt(2)
+                this_shot_and_read_noise = this_std_diff/pow(2, 0.5)   # taking the difference increases noise by sqrt(2). THIS GIVES US BACK THE CDS NOISE.
                 shot_and_read_noise.append(this_shot_and_read_noise)
                 
             # get variance 
@@ -191,42 +226,42 @@ if __name__ == "__main__":
                 calc_gain           = 1./fitted_coeffs[-2]
                 y_intercept         = np.polyval(fitted_coeffs, 0)
                 y_intercept_e       = y_intercept * calc_gain
-                rn                  = pow(y_intercept, 0.5)*calc_gain       # e-
-                rn_cds              = rn * pow(2, 0.5)                      # e-
+                rn_cds              = pow(y_intercept, 0.5)*calc_gain       # e-
             except FloatingPointError:
                 continue
             
-            RN.append(rn)
             RN_CDS.append(rn_cds)
-            CALC_GAIN.append(calc_gain) 
+            CALC_GAIN.append(calc_gain)       
             
     # CDS RN    
     if gain == 21:
-        fit = [15,40]
+        fit = [10,30]
     elif gain == 18:
-       fit = [15,45]
+       fit = [10,30]
     elif gain == 15:
-        fit = [20,45]
+        fit = [10,35]
     elif gain == 12:
-        fit = [20,50]
+        fit = [5,35]
 
     RN_CDS_TRIM = []
+    SPACING = 0.8
     for i in np.where(np.logical_and(np.array(RN_CDS)>=fit[0], np.array(RN_CDS)<=fit[1]))[0].tolist():
-        RN_CDS_TRIM.append(RN_CDS[i])        
-    n, bins, patches = plt.hist(RN_CDS_TRIM, bins=np.arange(fit[0],fit[1],1.0), label='data')
+        RN_CDS_TRIM.append(RN_CDS[i])      
+    n, bins, patches = plt.hist(RN_CDS_TRIM, bins=np.arange(fit[0],fit[1],SPACING))
     popt,pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(RN_CDS_TRIM),np.nanstd(RN_CDS_TRIM)])
     
-    logger.info("Calculated CDS RN is " + str(sf(popt[1], 3)) + "e-.")
+    logger.info("Calculated RN is " + str(sf(popt[1], 3)) + "e-.")
         
     if params['plt']:
         plt.figure()
+        plt.hist(RN_CDS_TRIM, bins=np.arange(fit[0],fit[1],SPACING), label='data')
         
-        plt.title("Histogram CDS RN Plot (" + str(gain) + "dB)")
-        plt.xlabel("CDS RN (e-)")
+        plt.title("Histogram RN Plot (" + str(gain) + "dB)")
+        plt.xlabel("RN (e-)")
         plt.ylabel("Number")
         
-        plt.plot(np.arange(fit[0],fit[1],1.0),gauss(np.arange(fit[0],fit[1],1.0),*popt),'r-', linewidth=2, label='fit')
-        plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='CDS RN = ' + str(sf(popt[1], 3)) + 'e-')
+        plt.plot(np.arange(fit[0],fit[1],SPACING),gauss(np.arange(fit[0],fit[1],SPACING),*popt),'r-', linewidth=2, label='fit')
+        plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='RN = ' + str(sf(popt[1], 3)) + 'e-')
         plt.xlim(fit)
         plt.legend(loc='upper left', fontsize=10)
         plt.savefig("cdsrn.png")    
@@ -242,22 +277,24 @@ if __name__ == "__main__":
         fit = [2.5,3.2]   
         
     CALC_GAIN_TRIM = []
+    SPACING = 0.03
     for i in np.where(np.logical_and(np.array(CALC_GAIN)>=fit[0], np.array(CALC_GAIN)<=fit[1]))[0].tolist():
         CALC_GAIN_TRIM.append(CALC_GAIN[i])      
-    n, bins, patches = plt.hist(CALC_GAIN_TRIM, bins=np.arange(fit[0], fit[1], 0.02), label='data')
+    n, bins, patches = plt.hist(CALC_GAIN_TRIM, bins=np.arange(fit[0], fit[1], SPACING), label='data')
     popt,pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(CALC_GAIN_TRIM),np.nanstd(CALC_GAIN_TRIM)])
     
     logger.info("Calculated gain is " + str(sf(popt[1], 3)) + "e-/ADU.")    
         
     if params['plt']:        
         plt.figure() 
+        plt.hist(CALC_GAIN_TRIM, bins=np.arange(fit[0], fit[1], SPACING), label='data')
         
         plt.title("Histogram Gain Plot (" + str(gain) + "dB)")
         plt.xlabel("Gain (e-)")
         plt.ylabel("Number")
         
-        plt.plot(np.arange(fit[0], fit[1], 0.02),gauss(np.arange(fit[0], fit[1], 0.02),*popt),'r-', linewidth=2, label='fit')
-        plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='Calc gain = ' + str(sf(popt[1], 3)) + 'e-')
+        plt.plot(np.arange(fit[0], fit[1], SPACING),gauss(np.arange(fit[0], fit[1], SPACING),*popt),'r-', linewidth=2, label='fit')
+        plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='Calc gain = ' + str(sf(popt[1], 3)) + 'e-/ADU')
         plt.xlim(fit)
         plt.legend(loc='upper left', fontsize=10)
         plt.savefig("gain.png")

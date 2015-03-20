@@ -13,23 +13,27 @@ class nonlinearity_correction:
         if len(self.coeffs) == 0:
             self.err.set_code(9, is_critical=True)
         else:
-            rate_corrected_data = data + rates*hdr['FRMTIME']
-            data_cor = np.zeros(data.shape)
+            rate_corrected_data = data + rates*hdr['INTTIME']
+            rate_linearity_corrected_data = np.zeros(data.shape)          
             for idx, c in enumerate(self.coeffs):
                 try:
-                    data_cor = data_cor + (c * pow(rate_corrected_data, idx))
+                    rate_linearity_corrected_data = rate_linearity_corrected_data + (c * pow(rate_corrected_data, idx))
                 except ValueError:
-                    self.err.set_code(23, is_critical=True)                
+                    self.err.set_code(23, is_critical=True)
+            #
+            # we need to derive correction factors (actual/observed) for rate corrected
+            # data then apply this correction factor to the non-rate corrected, otherwise
+            # if we were calculating it directly, we would be adding the rate to that  
+            # observed.
+            # 
+            correction_factors = rate_linearity_corrected_data/rate_corrected_data
+            data_cor = data * correction_factors
             return data_cor, hdr
 
-    def execute(self, data, hdr, rates, hard, out=None, opt_hdr={}):
+    def execute(self, data, hdr, rates):
         if data is None:
             self.err.set_code(12, is_critical=True)     
         data, hdr = self._evaluate_correction(data, hdr, rates) 
-        
-        if hard:
-            self.logger.info("[nonlinearity_correction.execute] Writing file out to " + out)          
-            write_FITS_file(out, data, hdr, opt_hdr=opt_hdr)
         return data, hdr
      
     def read_lcor_coeffs(self, path, order):

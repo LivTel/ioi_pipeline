@@ -32,7 +32,7 @@ class errors():
             22  :       "The flatfielding correction coefficient file has not been defined.",
             23  :       "Error occurred while performing linear correction operation, it is possible that the coefficient or bad pixel mask files are not consistent in size with the files being processed.",
             24  :       "Error occurred while performing flatfielding operation, it is possible that the coefficient file is not consistent in size with the files being processed.",
-            25  :       "Couldn't find suitable clipping sigma for background subtraction.",
+            25  :       "Sky clipping was unsuccessful, no values returned.",
             26  :       "Bad pixel mask size mismatch.",
             27  :       "Bad pixel mask file does not exist.", 
             28  :       "Bad pixel mask file(s) not defined.",  
@@ -44,6 +44,7 @@ class errors():
             34  :       "Value of ASICGAIN gives an unmapped GAIN/EPERDN, ignoring.",
             35  :       "EXTNAME is not valid, expecting either IM_NONSS or IM_SS.",
             36  :       "EXTNAME is not valid, expecting SK_SS.",
+            37  :       "Frames not taken with enhanced horizontal clocking. Linearity correction may not be optimal."
         }
         
     def set_code(self, code, is_warning=False, is_critical=False):

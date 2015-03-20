@@ -1,7 +1,9 @@
 '''
 calculate gain and read noise by making a variance v signal plot from either:
 a) two UTR sequences (R01 and R02) in the same directory
-b) a series of fowler exposures, with a directory structure like
+b) a series of fowler exposures, each with two ramps.
+
+b) requires a directory structure like
 
   PARENT/
          SUBDIR_1
@@ -12,7 +14,8 @@ b) a series of fowler exposures, with a directory structure like
          SUBDIR_N
    where each SUBDIR_? directory (different FS exptimes) contain two ramps.
    
-note that you will need to set pipeline_gain.ini parameters correctly (NUMBER OF PAIRS!)
+n.b. for FS, note that you will need to set the .ini file to reflect the number of
+pairs!
 '''
 import sys
 import optparse
@@ -52,18 +55,18 @@ if __name__ == "__main__":
     
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/9/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/16/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
-    group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')
-    group1.add_option('--pi', action='store', default='../../config/pipeline_gain_UTR_rmb.ini', type=str, dest='pipeCfgPath', help='path to pipeline config file')     
+    group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')    
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')      
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use (method==UTR only)')
     group1.add_option('--ghi', action='store', default=20, type=int, dest='maxGrpNum', help='highest group number to use (method==UTR only)')
-    group1.add_option('--l', action='store', dest='maxLinADU', default=10000, type=float, help='maximum ADU to consider for linear fit')
+    group1.add_option('--r', action='store', dest='fit', default="0,10000", help='ADU range to consider when fitting')
+    group1.add_option('--c', action='store', default=1, type=float, dest='fitCoeff', help='Coeffient of fit to signal')
     group1.add_option('--win', action='store', dest='windowSize', default=20, type=int, help='size of window to use (px)')  
     group1.add_option('--pl', action='store_true', dest='plt', help='make plot?') 
-    group1.add_option('--m', action='store', dest='method', default='UTR', type=str, help='method (UTR||FOWLER)')
+    group1.add_option('--m', action='store', dest='method', default='FOWLER', type=str, help='method (UTR||FOWLER)')
     parser.add_option_group(group1)
     
     options, args = parser.parse_args()
@@ -72,7 +75,6 @@ if __name__ == "__main__":
         'workingDir' : str(options.workingDir).rstrip("/") + "/",
         'clobber' : bool(options.clobber),       
         'pathsCfgPath' : str(options.pathsCfgPath),
-        'pipeCfgPath' : str(options.pipeCfgPath),
         'minRunNum' : 1,
         'maxRunNum' : 2,
         'minDithNum' : 0,
@@ -82,7 +84,8 @@ if __name__ == "__main__":
         'minExpNum' : 1,
         'maxExpNum' : 16,        
         'logLevel' : str(options.logLevel.upper()),
-        'maxLinADU' : float(options.maxLinADU),
+        'fit' : str(options.fit).split(','),
+        'fitCoeff' : float(options.fitCoeff),
         'windowSize' : int(options.windowSize),
         'plt' : bool(options.plt),
         'method' : str(options.method)
@@ -104,7 +107,6 @@ if __name__ == "__main__":
     logger.addHandler(ch)
     
     # error handler
-
     err = errors(logger)   
 
     # create res directory to store metadata
@@ -132,12 +134,11 @@ if __name__ == "__main__":
     f_r1_rates = []
     f_r2_data  = []
     f_r2_hdr   = []
-    f_r2_rates = []
-    
-    ## run pipeline with either UTR or FOWLER frames (see note at top for directory format)
+    f_r2_rates = [] 
+    # run pipeline with either UTR sequence
+    params['pipeCfgPath'] = "config/pipeline_gain_UTR.ini"
     if params['method'] == 'UTR':
         for i in range(params['minGrpNum'], params['maxGrpNum']-1):
-            params['minGrpNum'] = params['minGrpNum']
             params['maxGrpNum'] = i+2
             
             pipe = run_pipe(params, logger, err)
@@ -150,6 +151,8 @@ if __name__ == "__main__":
             f_r2_hdr.append(pipe.session.file_hdr_nonss[1][0]) 
             f_r2_rates.append(pipe.session.rates[1][0])
             
+    # run pipeline with FS sequence (see note at top for expected directory format)   
+    params['pipeCfgPath'] = "config/pipeline_gain_FS.ini"
     if params['method'] == 'FOWLER':             
         params['minGrpNum'] = 1
         params['maxGrpNum'] = 2    
@@ -167,7 +170,7 @@ if __name__ == "__main__":
             f_r2_hdr.append(pipe.session.file_hdr_nonss[1][0]) 
             f_r2_rates.append(pipe.session.rates[1][0])
 
-    ## get ASIC gain and frmtime
+    # get ASIC gain and frmtime
     gain        = float(pipe.session.file_hdr_nonss[0][0].comments['ASICGAIN'].split('(')[1].split('dB')[0])
     frmtime     = float(pipe.session.file_hdr_nonss[0][0]['FRMTIME']) 
     
@@ -176,22 +179,20 @@ if __name__ == "__main__":
         exit(0)       
    
     RN          = []
-    RN_CDS      = []
     CALC_GAIN   = []
-    
-    # calculate signal mean and variance of difference frame for 50x100 pixel different windows
+    # calculate signal mean and variance of difference frame for different windows
     for s1 in range(100, 1900, params['windowSize']):
         for s2 in range(100, 1900, params['windowSize']):
             means_average       = []
             shot_and_read_noise = []
             ## section files
             s1_lo = int(s1)
-            s1_hi = int(s1+100+1)
+            s1_hi = int(s1+params['windowSize']+1)
             s2_lo = int(s2)
-            s2_hi = int(s2+100+1)
+            s2_hi = int(s2+params['windowSize']+1)
             for i in range(0, len(f_r1_data), 1):
-                f_sect_r1 = f_r1_data[i][s1_lo:s1_hi, s2_lo:s2_hi] #+ np.median(f_r1_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
-                f_sect_r2 = f_r2_data[i][s1_lo:s1_hi, s2_lo:s2_hi] #+ np.median(f_r2_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
+                f_sect_r1 = f_r1_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r1_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
+                f_sect_r2 = f_r2_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r2_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
 
                 ## get means/stds of sections for each file
                 this_mean_r1 = np.mean(f_sect_r1)
@@ -211,90 +212,76 @@ if __name__ == "__main__":
                 this_shot_and_read_noise = this_std_diff/pow(2, 0.5)   # taking the difference increases noise by sqrt(2). THIS GIVES US BACK THE CDS NOISE.
                 shot_and_read_noise.append(this_shot_and_read_noise)
                 
-            # get variance 
+            ## get variance 
             vars_diff = [pow(i, 2) for i in shot_and_read_noise]
             
-            ## calculate coeffs of linear fit to early integration times (where accumulation of signal ~ linear)
-            idx_lo = np.where(np.array(means_average)<params['maxLinADU'])[0][0]
-            idx_hi = np.where(np.array(means_average)<params['maxLinADU'])[0][-1]
-            if idx_lo == 0 and idx_hi == 0:
-                continue 
-            fitted_coeffs = np.polyfit(means_average[idx_lo:idx_hi], vars_diff[idx_lo:idx_hi], 1)
-            fitted_total_noise = np.polyval(fitted_coeffs, means_average)
-            
+            ## calculate coeffs of fit to integration times
+            ADUrange = np.where(np.logical_and(np.array(means_average)>=float(params['fit'][0]), np.array(means_average)<=float(params['fit'][1])))
+            idx_lo = ADUrange[0][0]
+            idx_hi = ADUrange[0][-1]
+            if idx_lo == idx_hi:
+                continue
+            fitted_coeffs = np.polyfit(means_average[idx_lo:idx_hi], vars_diff[idx_lo:idx_hi], params['fitCoeff'])
+            fitted_total_noise = np.polyval(fitted_coeffs, means_average) 
+
             try: 
                 calc_gain           = 1./fitted_coeffs[-2]
                 y_intercept         = np.polyval(fitted_coeffs, 0)
-                y_intercept_e       = y_intercept * calc_gain
-                rn_cds              = pow(y_intercept, 0.5)*calc_gain       # e-
+                rn                  = pow(y_intercept, 0.5)
+                rn_e                = rn*calc_gain
             except FloatingPointError:
                 continue
-            
-            RN_CDS.append(rn_cds)
-            CALC_GAIN.append(calc_gain)       
-            
-    # CDS RN    
-    if gain == 21:
-        fit = [10,30]
-    elif gain == 18:
-       fit = [10,30]
-    elif gain == 15:
-        fit = [10,35]
-    elif gain == 12:
-        fit = [5,35]
-
-    RN_CDS_TRIM = []
-    SPACING = 0.8
-    for i in np.where(np.logical_and(np.array(RN_CDS)>=fit[0], np.array(RN_CDS)<=fit[1]))[0].tolist():
-        RN_CDS_TRIM.append(RN_CDS[i])      
-    n, bins, patches = plt.hist(RN_CDS_TRIM, bins=np.arange(fit[0],fit[1],SPACING))
-    popt,pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(RN_CDS_TRIM),np.nanstd(RN_CDS_TRIM)])
+            RN.append(rn_e)
+            CALC_GAIN.append(calc_gain)  
+           
+    # plot RN        
+    ## set up some RN histogram attributes
+    rn_median = np.median(RN)
+    lim = [rn_median-15, rn_median+15]
+    n_bins = 50
+    bin_width = (lim[1]-lim[0])/n_bins  
     
-    logger.info("Calculated RN is " + str(sf(popt[1], 3)) + "e-.")
+    plt.figure()
+    n, bins, patches = plt.hist(RN, bins=np.arange(lim[0],lim[1],bin_width), label='data')                                                        # histogram
+    popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(RN),np.nanstd(RN)])             # gauss fit
         
+    plt.title("Histogram RN Plot (" + str(gain) + "dB)")
+    plt.xlabel("RN (e-)")
+    plt.ylabel("Number")
+        
+    plt.plot(np.arange(lim[0],lim[1],bin_width),gauss(np.arange(lim[0],lim[1],bin_width),*popt),'r-', linewidth=2, label='fit')
+    plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='RN = ' + str(sf(popt[1], 3)) + 'e-')
+    plt.xlim(lim)
+    plt.legend(loc='upper left', fontsize=10)
     if params['plt']:
-        plt.figure()
-        plt.hist(RN_CDS_TRIM, bins=np.arange(fit[0],fit[1],SPACING), label='data')
+        plt.savefig("rn.png")   
+    else:
+        plt.show()
         
-        plt.title("Histogram RN Plot (" + str(gain) + "dB)")
-        plt.xlabel("RN (e-)")
-        plt.ylabel("Number")
+    logger.info("Calculated RN is " + str(sf(popt[1], 3)) + "e-.")            
+           
+    # plot GAIN    
+    ## set up some GAIN histogram attributes
+    gain_median = np.median(CALC_GAIN)
+    lim = [gain_median-1, gain_median+1]
+    n_bins = 40
+    bin_width = (lim[1]-lim[0])/n_bins   
+
+    plt.figure() 
+    n, bins, patches = plt.hist(CALC_GAIN, bins=np.arange(lim[0], lim[1], bin_width), label='data')                                                      # histogram
+    popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(CALC_GAIN),np.nanstd(CALC_GAIN)])      # gauss fit
         
-        plt.plot(np.arange(fit[0],fit[1],SPACING),gauss(np.arange(fit[0],fit[1],SPACING),*popt),'r-', linewidth=2, label='fit')
-        plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='RN = ' + str(sf(popt[1], 3)) + 'e-')
-        plt.xlim(fit)
-        plt.legend(loc='upper left', fontsize=10)
-        plt.savefig("cdsrn.png")    
-     
-    # GAIN   
-    if gain == 21:
-        fit = [0.9,1.2]
-    elif gain == 18:
-        fit = [1.25,1.7] 
-    elif gain == 15:
-        fit = [1.85,2.25]
-    elif gain == 12:
-        fit = [2.5,3.2]   
+    plt.title("Histogram Gain Plot (" + str(gain) + "dB)")
+    plt.xlabel("Gain (e-)")
+    plt.ylabel("Number")
         
-    CALC_GAIN_TRIM = []
-    SPACING = 0.03
-    for i in np.where(np.logical_and(np.array(CALC_GAIN)>=fit[0], np.array(CALC_GAIN)<=fit[1]))[0].tolist():
-        CALC_GAIN_TRIM.append(CALC_GAIN[i])      
-    n, bins, patches = plt.hist(CALC_GAIN_TRIM, bins=np.arange(fit[0], fit[1], SPACING), label='data')
-    popt,pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(CALC_GAIN_TRIM),np.nanstd(CALC_GAIN_TRIM)])
-    
-    logger.info("Calculated gain is " + str(sf(popt[1], 3)) + "e-/ADU.")    
+    plt.plot(np.arange(lim[0], lim[1], bin_width),gauss(np.arange(lim[0], lim[1], bin_width),*popt),'r-', linewidth=2, label='fit')
+    plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='Calc gain = ' + str(sf(popt[1], 3)) + 'e-/ADU')
+    plt.xlim(lim)
+    plt.legend(loc='upper left', fontsize=10)
+    if params['plt']:
+        plt.savefig("gain.png")   
+    else:
+        plt.show()
         
-    if params['plt']:        
-        plt.figure() 
-        plt.hist(CALC_GAIN_TRIM, bins=np.arange(fit[0], fit[1], SPACING), label='data')
-        
-        plt.title("Histogram Gain Plot (" + str(gain) + "dB)")
-        plt.xlabel("Gain (e-)")
-        plt.ylabel("Number")
-        
-        plt.plot(np.arange(fit[0], fit[1], SPACING),gauss(np.arange(fit[0], fit[1], SPACING),*popt),'r-', linewidth=2, label='fit')
-        plt.plot([popt[1] for i in range(0, int(np.ceil(max(n))))], range(0, int(np.ceil(max(n)))), 'r--', linewidth=2, label='Calc gain = ' + str(sf(popt[1], 3)) + 'e-/ADU')
-        plt.xlim(fit)
-        plt.legend(loc='upper left', fontsize=10)
-        plt.savefig("gain.png")
+    logger.info("Calculated gain is " + str(sf(popt[1], 3)) + "e-/ADU.")       

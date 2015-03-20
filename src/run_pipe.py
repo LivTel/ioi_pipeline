@@ -1,6 +1,5 @@
 from session import *
 from remove_reference import *
-from correct_nonlinearity import *
 from flatfielding import *
 from utility import *
 from combine import *
@@ -18,7 +17,7 @@ class run_pipe():
         self.err    = err
         self.session = None
         
-    def go(self):
+    def go(self):     
         params = self.params
         logger = self.logger
         err = self.err
@@ -51,15 +50,12 @@ class run_pipe():
             combination_method                  = str(pipe_cfg['frame_combination']['method'].upper())
             combination_f_pairs                 = int(pipe_cfg['frame_combination']['fowler_pairs'])
             combination_hard                    = bool(int(pipe_cfg['frame_combination']['hard'])) 
-            combination_hard_rates              = bool(int(pipe_cfg['frame_combination']['hard_rates']))
             combination_quit                    = bool(int(pipe_cfg['frame_combination']['quit']))         
             ## nonlinearity_corrections
             do_nonlincor                        = bool(int(pipe_cfg['nonlinearity_corrections']['do']))       
             nonlincor_order                     = int(pipe_cfg['nonlinearity_corrections']['order'])
             nonlincor_coeff_path                = str(full_path_nonlinearity_corrections + paths_cfg['nonlinearity_corrections']['coeff_filename'])
             nonlincor_badpix_path               = str(full_path_nonlinearity_corrections + paths_cfg['nonlinearity_corrections']['bad_pix_filename'])        
-            nonlincor_hard                      = bool(int(pipe_cfg['nonlinearity_corrections']['hard'])) 
-            nonlincor_quit                      = bool(int(pipe_cfg['nonlinearity_corrections']['quit'])) 
             ## flatfielding
             do_ff                               = bool(int(pipe_cfg['flatfielding']['do']))   
             ff_coeff_path                       = str(full_path_flatfielding_corrections + paths_cfg['flatfielding']['coeff_filename'])
@@ -153,6 +149,35 @@ class run_pipe():
             file_data_post_combine     = []
             file_hdr_post_combine      = []
             rates                      = []
+            
+            # ----------------------------------------   
+            # ---- set up nonlinearity correction ----   
+            # ----------------------------------------  
+            #
+            # this needs to be done on a per CDS frame basis 
+            # if fowler mode is requested as the linearity
+            # correction needs to be separately applied to
+            # the different pairs (each pair has a different
+            # "zero" value corresponding to a multiple of the
+            # readout time). It therefore has to be done after
+            # each individual pair is made, i.e. in the 
+            # combine routine.
+            #
+            # painful, I know.
+            #
+            if do_nonlincor:
+                logger.info("[run_pipe.go] Nonlinearity correction requested.")
+                self.session.add_amend_opt_header('L1LCOR', 1, 'linearity corrected')
+                self.session.add_amend_opt_header('L1LCORF', os.path.basename(nonlincor_coeff_path), 'nonlinearity coeff file used')
+                self.session.file_ext = self.session.file_ext + ".lcor"
+                lcor = nonlinearity_correction(logger, err) 
+                lcor.read_lcor_coeffs(nonlincor_coeff_path, nonlincor_order)
+            else:
+                logger.info("[run_pipe.go] No linearity correction requested.") 
+                self.session.add_amend_opt_header('L1LCOR', 0, 'linearity corrected')  
+                lcor = None
+                
+                
             for idx_1, run in enumerate(self.session.file_data):
                 file_data_post_combine.append([])
                 file_hdr_post_combine.append([])
@@ -160,10 +185,8 @@ class run_pipe():
                 for idx_2, dither in enumerate(run): 
                     logger.info("[run_pipe.go] Combining files for run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
                     this_outPath_comb = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"   
-                    this_outPath_rate = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".rate.fits"  
                     rtn_data, rtn_hdr, rtn_rates = comb.execute(method=combination_method, datas=self.session.file_data[idx_1][idx_2], hdrs=self.session.file_hdr[idx_1][idx_2], \
-                                                                hard=combination_hard, hard_rates=combination_hard_rates, out=this_outPath_comb, out_rate=this_outPath_rate, \
-                                                                f_pairs=combination_f_pairs, opt_hdr=self.session.opt_hdr) 
+                                                                hard=combination_hard, lcor=lcor, out=this_outPath_comb, f_pairs=combination_f_pairs, opt_hdr=self.session.opt_hdr) 
                     if rtn_data is not None and rtn_hdr is not None and rtn_rates is not None: 
                         file_data_post_combine[idx_1].append(rtn_data)
                         file_hdr_post_combine[idx_1].append(rtn_hdr)
@@ -174,35 +197,7 @@ class run_pipe():
                 logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
                 return err.current_code
               
-            self.session.set_session_vars_post_combine(file_data_post_combine, file_hdr_post_combine, rates)          # this sets file_[data||hdr]_[ss||nonss] and rates vars.   
-
-            # ---------------------------------   
-            # ---- nonlinearity correction ----   
-            # ---------------------------------            
-            if do_nonlincor:    
-                logger.info("[run_pipe.go] Beginning nonlinearity correction.")
-                self.session.add_amend_opt_header('L1LCOR', 1, 'linearity corrected')
-                self.session.add_amend_opt_header('L1LCORF', os.path.basename(nonlincor_coeff_path), 'nonlinearity coeff file used')
-                self.session.file_ext = self.session.file_ext + ".lcor"
-                cor = nonlinearity_correction(logger, err) 
-                cor.read_lcor_coeffs(nonlincor_coeff_path, nonlincor_order)
-                for idx_1, run in enumerate(self.session.file_data_nonss):
-                  for idx_2, f in enumerate(run):
-                      logger.info("[run_pipe.go] Applying nonlinearity correction to run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
-                      this_outPath = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"
-                      rtn_data, rtn_hdr = cor.execute(data=self.session.file_data_nonss[idx_1][idx_2], hdr=self.session.file_hdr_nonss[idx_1][idx_2], \
-                                                      rates=self.session.rates[idx_1][idx_2], hard=nonlincor_hard, out=this_outPath, opt_hdr=self.session.opt_hdr)
-                      if rtn_data is not None and rtn_hdr is not None:
-                          self.session.file_data_nonss[idx_1][idx_2] = rtn_data
-                          self.session.file_hdr_nonss[idx_1][idx_2]  = rtn_hdr
-                      else:
-                          err.set_code(6, is_critical=True)       
-                if nonlincor_quit:
-                    logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
-                    return err.current_code                       
-            else:
-                logger.info("[run_pipe.go] No linearity correction requested.") 
-                self.session.add_amend_opt_header('L1LCOR', 0, 'linearity corrected')          
+            self.session.set_session_vars_post_combine(file_data_post_combine, file_hdr_post_combine, rates)          # this sets file_[data||hdr]_[ss||nonss] and rates vars.  
                       
             # -------------------------------   
             # -------- flatfielding ---------   

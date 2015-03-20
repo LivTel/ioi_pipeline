@@ -23,7 +23,7 @@ class session:
         self.file_hdr_ss_stk            = None
         self.file_opt_hdr_ss_stk        = None
         self.file_ext                   = ''
-        self.rates                      = None  # ct/s
+        self.rates                      = None # cts/s
     
     def add_files(self, files):
         self.file_data   = copy.deepcopy(files)
@@ -57,9 +57,9 @@ class session:
     def set_session_vars_post_combine(self, datas, hdrs, rates):
         self.file_data_nonss = copy.deepcopy(datas)
         self.file_hdr_nonss  = copy.deepcopy(hdrs)
-        self.rates = rates 
         self.file_data_ss    = []          
         self.file_hdr_ss     = []  
+        self.rates                = rates
         for idx_1, run in enumerate(datas):
             self.file_data_ss.append([])
             self.file_hdr_ss.append([])

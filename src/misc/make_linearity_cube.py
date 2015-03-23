@@ -18,17 +18,19 @@ from errors import errors
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/15/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/17/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')   
     group1.add_option('--rlo', action='store', default=1, type=int, dest='minRunNum', help='lowest ramp number to use')
-    group1.add_option('--rhi', action='store', default=1, type=int, dest='maxRunNum', help='highest ramp number to use')    
+    group1.add_option('--rhi', action='store', default=2, type=int, dest='maxRunNum', help='highest ramp number to use')    
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
     group1.add_option('--ghi', action='store', default=25, type=int, dest='maxGrpNum', help='highest group number to use')
     group1.add_option('--l', action='store', default='20,100', type=str, dest='linFit', help='Time range over which to establish linear fit to slope')
-    group1.add_option('--f', action='store', default='2500,60000', type=str, dest='yFit', help='ADU range over which to establish polyfit. Be aware that any pixel which has a well depth short of the upper value will most likely be flagged as bad')
+    group1.add_option('--f', action='store', default='2500,38000', type=str, dest='yFit', help='ADU range over which to establish polyfit. Must account for "ADU" lost by frame combination. \
+                                                                                                Be aware that any pixel which has a well depth short of the upper value will most likely \
+                                                                                                be flagged as bad')
     group1.add_option('--c', action='store', default=3, type=float, dest='fitCoeff', help='Coeffient of fit to signal')
     group1.add_option('--b', action='store', default=1.0, type=float, dest='badThresh', help='Maximum percentage of non-linearity post-correction to flag as bad pixel')
     group1.add_option('--sig', action='store', default=3, type=float, dest='sig', help='Number of sigma which mean rate must lie above 0 to be classed as good')    
@@ -281,4 +283,7 @@ if __name__ == "__main__":
         pyfits.writeto("lin.fits", data=nonlinearities) 
         pyfits.writeto("lin_bad.fits", data=badpixmap)         
         for i in range(params['fitCoeff']+1):   
-            pyfits.writeto("lin_coeffs_" + str(i) + ".fits", coeffs[params['fitCoeff']-i])   # params['fitCoeff']-i to reverse so that coeff_0 is the constant..                
+            if os.path.exists("lin_coeffs.fits"):
+                pyfits.append("lin_coeffs.fits", coeffs[params['fitCoeff']-i])    # params['fitCoeff']-i to reverse so that coeff_0 is the constant.. 
+            else:
+                pyfits.writeto("lin_coeffs.fits", coeffs[params['fitCoeff']-i])   # params['fitCoeff']-i to reverse so that coeff_0 is the constant..                

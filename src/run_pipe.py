@@ -193,11 +193,15 @@ class run_pipe():
                         rates[idx_1].append(rtn_rates)
                     else:
                         err.set_code(6, is_critical=True)
+                        
+            self.session.set_session_vars_post_combine(file_data_post_combine, file_hdr_post_combine, rates)          # this sets file_[data||hdr]_[ss||nonss] and rates vars.              
+                
+            if params['twilight']:
+                print np.mean(self.session.file_data_nonss[0][0])
+
             if combination_quit:
                 logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
-                return err.current_code
-              
-            self.session.set_session_vars_post_combine(file_data_post_combine, file_hdr_post_combine, rates)          # this sets file_[data||hdr]_[ss||nonss] and rates vars.  
+                return err.current_code   
                       
             # -------------------------------   
             # -------- flatfielding ---------   
@@ -376,6 +380,7 @@ class run_pipe():
                                     self.session.set_opt_header_ss_stk()    
                                 except RuntimeError:
                                     err.set_code(13, is_critical=True)
+                                    
                                 self.session.set_session_vars_post_stacking(file_data_post_stacking, file_hdr_post_stacking)          # this sets file_[data||hdr]_[nonss]_stk vars.  
                                 
                                 # --------------------------  
@@ -413,6 +418,7 @@ if __name__ == "__main__":
     group1.add_option('--elo', action='store', default=1, type=int, dest='minExpNum', help='lowest exposure number to use')
     group1.add_option('--ehi', action='store', default=4, type=int, dest='maxExpNum', help='highest exposure number to use')    
     group1.add_option('--log', action='store', default='INFO', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')
+    group1.add_option('--t', action='store_true', dest='twilight', help='print mean level?')
     parser.add_option_group(group1)
     
     group2 = optparse.OptionGroup(parser, "LT specific general parameters")    
@@ -443,6 +449,7 @@ if __name__ == "__main__":
         'minGrpNum' : int(options.minGrpNum),
         'maxGrpNum' : int(options.maxGrpNum),
         'logLevel' : str(options.logLevel.upper()),
+        'twilight' : bool(options.twilight)
     }
 
     # console logging

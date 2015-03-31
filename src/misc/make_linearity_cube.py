@@ -1,5 +1,20 @@
 '''
     measure non-linearity using UTR sequences.
+    
+    when setting the yFit parameter, you should be aware that
+    this is defined after the frame has been CDS'ed, so the 
+    upper limit is restricted by bias level of the first frame.
+    e.g. consider:
+    
+    MAX BIAS ~ 25k, fills to 65K where the ADC saturates.
+    YFIT upper limit for these pixels will never pass 65k-25k 
+    = 40k.
+    
+    it should also be noted that close to FWD, the polyfit will not 
+    adequately match the real functional shape and the nonlinearity %
+    derived will be large. as it happens, we don't really need
+    to match all the way up to FWD, because anything past 
+    intrinsic 5% nonlinearity is probably garbage anyway.
 '''
 import sys
 import optparse
@@ -9,34 +24,42 @@ import matplotlib.pyplot as plt
 import pyfits
 import warnings
 import logging
+import math
 
 sys.path.append("../")
 from utility import read_FITS_file
 from run_pipe import run_pipe
 from errors import errors
 
+# util functions
+def sf(num, sig_figs):
+    try:
+        rtn = round(num, -int(math.floor(math.log10(abs(num))) - (sig_figs - 1)))
+        return rtn
+    except ValueError:
+        return 0.
+
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/17/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/19/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')   
     group1.add_option('--rlo', action='store', default=1, type=int, dest='minRunNum', help='lowest ramp number to use')
-    group1.add_option('--rhi', action='store', default=2, type=int, dest='maxRunNum', help='highest ramp number to use')    
+    group1.add_option('--rhi', action='store', default=1, type=int, dest='maxRunNum', help='highest ramp number to use')    
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
     group1.add_option('--ghi', action='store', default=25, type=int, dest='maxGrpNum', help='highest group number to use')
     group1.add_option('--l', action='store', default='20,100', type=str, dest='linFit', help='Time range over which to establish linear fit to slope')
-    group1.add_option('--f', action='store', default='2500,38000', type=str, dest='yFit', help='ADU range over which to establish polyfit. Must account for "ADU" lost by frame combination. \
-                                                                                                Be aware that any pixel which has a well depth short of the upper value will most likely \
-                                                                                                be flagged as bad')
+    group1.add_option('--f', action='store', default='2500,40000', type=str, dest='yFit', help='ADU range over which to establish polyfit.')
     group1.add_option('--c', action='store', default=3, type=float, dest='fitCoeff', help='Coeffient of fit to signal')
-    group1.add_option('--b', action='store', default=1.0, type=float, dest='badThresh', help='Maximum percentage of non-linearity post-correction to flag as bad pixel')
+    group1.add_option('--b', action='store', default=0.8, type=float, dest='badThresh', help='Maximum percentage of non-linearity post-correction to flag as bad pixel')
     group1.add_option('--sig', action='store', default=3, type=float, dest='sig', help='Number of sigma which mean rate must lie above 0 to be classed as good')    
     group1.add_option('--plb', action='store_true', dest='plotB', help='plot bad pixels')
     group1.add_option('--pla', action='store_true', dest='plotA', help='plot all pixels')
-    parser.add_option('--fits', action='store_true', dest='fits', help='make flat and bad pixel map FITS files')
+    group1.add_option('--fits', action='store_true', dest='fits', help='make flat and bad pixel map FITS files')
+    group1.add_option('--fl', action='store_true', dest='flip', help='flip array on write?')
     parser.add_option_group(group1)
     
     options, args = parser.parse_args()
@@ -61,7 +84,8 @@ if __name__ == "__main__":
         'sig' : float(options.sig),        
         'plotA' : bool(options.plotA),
         'plotB' : bool(options.plotB),
-        'fits' : bool(options.fits)
+        'fits' : bool(options.fits),
+        'flip' : bool(options.flip)
     }
     
     # console logging
@@ -109,12 +133,13 @@ if __name__ == "__main__":
     for i in range(params['minGrpNum'], params['maxGrpNum']-1):
         params['maxGrpNum'] = i+2
         data_this_grp = []
-        for i in range(params['minRunNum'], params['maxRunNum']+1, 1):
+        for j in range(params['minRunNum'], params['maxRunNum']+1, 1):
             pipe = run_pipe(params, logger, err)
             pipe.go()   
-            
-            data_this_grp.append(pipe.session.file_data_nonss[i-1][0] + pipe.session.rates[i-1][0]) 
-            inttime.append(pipe.session.file_hdr_nonss[i-1][0]['EXPTIME'])
+            frmtime = pipe.session.file_hdr_nonss[j-1][0]['FRMTIME']
+            data_this_grp.append(pipe.session.file_data_nonss[j-1][0] + pipe.session.rates[j-1][0]*frmtime) 
+            if j == 1:
+                inttime.append(pipe.session.file_hdr_nonss[j-1][0]['EXPTIME'])
         data.append(np.median(data_this_grp, axis=0))
 
     # create coeffs, nonlinearities and badpixmap arrays
@@ -125,8 +150,8 @@ if __name__ == "__main__":
     badpixmap = np.ones(data[0].shape)          # create bad pixel map array 
 
     bad_pix_count = 0
-    for jj in range(0, data[0].shape[1]):
-        for ii in range(0, data[0].shape[0]):
+    for jj in range(0, 1):
+        for ii in range(0, 5):
             this_pixel_values = []
             flagged_pixel = False
             ## obtain all values for this pixel
@@ -180,14 +205,16 @@ if __name__ == "__main__":
                     this_pixel_values_cor.append(this_corrected_value)
 
                 ## find nonlinearity as percentage pre/post and store
+
                 this_pixel_nonlinearity_uncor = abs((this_pixel_values - np.polyval(linfit_coeffs, inttime))/np.polyval(linfit_coeffs, inttime))*100
                 this_pixel_nonlinearity_cor = abs((this_pixel_values_cor - np.polyval(linfit_coeffs, inttime))/np.polyval(linfit_coeffs, inttime))*100
-                nonlinearities[jj, ii] = np.median(this_pixel_nonlinearity_cor)        
+                avg_nonlinearity = np.median([this_pixel_nonlinearity_cor[i] for i in range(len(this_pixel_vals_in_fit))])
+                nonlinearities[jj, ii] = avg_nonlinearity
                 
                 ### TEST: if the residual nonlinearity is below the "bad" threshold:
-                if np.median([this_pixel_nonlinearity_cor[i] for i in range(len(this_pixel_vals_in_fit))]) > params['badThresh']:
+                if avg_nonlinearity > params['badThresh']:
                     flagged_pixel = True
-                    print "FAILED LINEARITY: Bad pixel found @ " + str(ii) + ", " + str(jj) + " with a nonlinearity of " + str(np.median(this_pixel_nonlinearity_cor))
+                    print "FAILED LINEARITY: Bad pixel found @ " + str(ii) + ", " + str(jj) + " with a nonlinearity of " + str(sf(np.median(avg_nonlinearity), 2)) + "%"
                     badpixmap[jj, ii] = np.nan
                     bad_pix_count = bad_pix_count + 1
                     print "NUMBER OF BAD PIXELS: " + str(bad_pix_count)
@@ -196,7 +223,7 @@ if __name__ == "__main__":
                 rates = [(this_pixel_values[i]-this_pixel_values[i-1])/(inttime[i]-inttime[i-1]) for i in range(len(this_pixel_vals_in_fit))]
                 if np.mean(rates) - (params['sig'] * np.std(rates)) < 0:
                     flagged_pixel = True
-                    print "FAILED RATE: Bad pixel found @ " + str(ii) + ", " + str(jj) + " with a rate of " + str(np.mean(rates))
+                    print "FAILED RATE: Bad pixel found @ " + str(ii) + ", " + str(jj) + " with a rate of " + str(sf(np.mean(rates), 2)) + "ADU/s"
                     badpixmap[jj, ii] = np.nan
                     bad_pix_count = bad_pix_count + 1
                     print "NUMBER OF BAD PIXELS: " + str(bad_pix_count)
@@ -280,10 +307,17 @@ if __name__ == "__main__":
         print "row " + str(jj+1) + " of " + str((data[0].shape[1]))
 
     if params['fits']:
+        if params['flip']:
+            nonlinearities = np.fliplr(nonlinearities)
+            badpixmap = np.fliplr(badpixmap)
         pyfits.writeto("lin.fits", data=nonlinearities) 
         pyfits.writeto("lin_bad.fits", data=badpixmap)         
-        for i in range(params['fitCoeff']+1):   
+        for i in range(params['fitCoeff']+1):  
+            this_coeffs_32 = coeffs[params['fitCoeff']-i].astype(np.float32, copy=False)    # params['fitCoeff']-i to reverse so that coeff_0 is the constant..  
+            if params['flip']:
+                this_coeffs_32 = np.fliplr(this_coeffs_32)
+                
             if os.path.exists("lin_coeffs.fits"):
-                pyfits.append("lin_coeffs.fits", coeffs[params['fitCoeff']-i])    # params['fitCoeff']-i to reverse so that coeff_0 is the constant.. 
+                pyfits.append("lin_coeffs.fits", this_coeffs_32)    
             else:
-                pyfits.writeto("lin_coeffs.fits", coeffs[params['fitCoeff']-i])   # params['fitCoeff']-i to reverse so that coeff_0 is the constant..                
+                pyfits.writeto("lin_coeffs.fits", this_coeffs_32)               

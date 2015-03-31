@@ -42,6 +42,8 @@ Options:
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--elo=MINEXPNUM    lowest exposure number to use<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--ehi=MAXEXPNUM    highest exposure number to use<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--log=LOGLEVEL     log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--f                flip calibration data about x axis?
+
 
   LT specific general parameters:<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--d=DATE           date (YYYYMMDD)<br/>
@@ -77,42 +79,45 @@ There is also a "CONSTANT" mode, which as the name suggests, takes the mean for 
 
 ii) **FRAME COMBINATION**.
 
-Either CDS or Fowler. Not much to note here, except that in addition to performing the combination, I calculate the rate of charge accumulation. This is done (at the moment) by subtracting the second file in the sequence by the first, and dividing by the difference between their INTTIME values. This yields a value for counts/s, and is necessary for accurate nonlinearity correction (see next).
+Either CDS or Fowler. Not much to note here, except that in addition to performing the combination, I calculate the rate of charge accumulation. This is done by subtracting the second file in the sequence by the first, and dividing by the difference between their INTTIME values. This yields a value for counts/s, and is necessary for accurate nonlinearity correction (see next).
 
+Checks are done to ensure that there are equal numbers of pedestal/readout frames when performing Fowler sampling. 
+
+Some headers are also appended/updated in this section, removing Teledyne run (SEQNUM_R), group (SEQNUM_M) and exposure (SEQNUM_N) numbers as well as SEQNNAME and INTTIME keywords, all of which have no meaning after frame combination. MJD, DATE, DATE-OBS and UTSTART are all also amended, in addition to setting the correct EXPTIME.
 
 iii) **NONLINEARITY CORRECTION**.
 
-I have generated a series of "correction coefficient files" by using an up-the-ramp (UTR) sequence. For each pixel, the integration time is plotted against the counts observed. A linear fit is made to the early part of this sequence (when the charge accumulation is assumed to be linear), and another fit made between the values derived from the linear fit (the "actual" counts) and the observed counts. At the moment, the order of this fit is 3, hence there are three filenames for the linearity correction (paths\_*.ini > nonlinearity\_corrections > coeff\_filenames: lin\_coeff\_0\_011214.fits,lin\_coeffs\_1\_011214.fits,lin\_coeffs\_2\_011214.fits,lin\_coeffs\_3\_011214.fits). This makes for easy application of the correction in the pipeline (it's just array multiplication..).
+I have generated a series of "correction coefficient files" by using an up-the-ramp (UTR) sequence. For each pixel, the integration time is plotted against the counts observed. A linear fit is made to the early part of this sequence (when the charge accumulation is assumed to be linear), and another fit made between the values derived from the linear fit (the "actual" counts) and the observed counts. At the moment, the order of this fit is 3, producing a single MEF file with each order as an extension (paths\_*.ini > nonlinearity\_corrections > coeff\_filename: lin_coeffs_[DATE].fits). This makes for easy application of the correction in the pipeline (it's just array multiplication..).
 
 A caveat to this is that because we are combining the frames, we "lose" 1.4s (one readout time in 32 output mode) of signal. If the rate of accumulation is the same between the UTR sequence used to find the nonlinearity coefficients and the target you're observing, then this isn't a problem. However, if they're different, which they obviously will be in any real scenario, then you could possibly end up on the wrong part of the linearity slope, e.g. consider:
 
 * nonlinearity correction derived with count rate of 50ADU/s, so 50*1.4=70ADU of flux "lost" from frame combination.
-* target count rate of 250ADU/s, so 250*1.4=350ADU of flux "lost" from frame combination.
+* bright target with count rate of 250ADU/s, so 250*1.4=350ADU of flux "lost" from frame combination.
 
 This means that in your combined frames, a "0" value actually correspond to a difference in signal of 280ADU.
 
 In the process above I correct for this by adding 1.4s worth of flux for each pixel. This 1.4s of flux is derived in the same way the rate was derived for FRAME COMBINATION above.
 
-When generating the correction files, I also output a bad pixel mask. Bad pixels are defined as both a) no accumulation of charge with time, and b) having a percentage nonlinearity ((observed&corrected-actual)/actual)*100 > some threshold value (currently 0.8% - arbitrary but derived by looking at the distribution of linearity values). A .FITS file with the linearity values is outputted and currently resides as "lin\_[DATE]" in the config/nonlinearity\_corrections dir. OK pixels are stored with a value of "1", bad pixels are stored with a value of "NaN". This assignment makes it very easy (and is also necessary) for the pipeline to combine/use masks. This bad pixel mask is named "lin\_bad\_[DATE]" and is also currently in the config/nonlinearity\_corrections dir.
+When generating the correction files, I output a bad pixel mask. Bad pixels are defined as both a) no accumulation of charge with time, and b) having a percentage nonlinearity ((observed&corrected-actual)/actual)*100 > some threshold value (currently 0.8% - arbitrary but derived by looking at the distribution of linearity values). This bad pixel mask is named "lin\_bad\_[DATE]" and currently resides in the config/nonlinearity\_corrections dir. A .FITS file with the linearity values has also been created and currently resides as "lin\_[DATE]" in the config/nonlinearity\_corrections dir. In this file, bad pixels are stored with a value of "0". 
 
-The script I used to measure the linearity is found in src/measure\_linearity.py. I am currently in the process of refactoring it.
+The script I used to make this nonlinearity cube can is src/make\_nonlinearity\_cube.py.
 
 iv) **FLATFIELDING**.
 
-Don't think I need to write much about this, each combined frame is divided through by the flat. An extra point to note is that when I generated flats previously, I also generated a bad pixel mask to find coefficients < some threshold value (0.35). OK pixels are stored with a value of "1", bad pixels are stored with a value of "NaN". This bad pixel mask is named "flat\_bad\_[DATE]" and is currently in the config/flatfielding dir.
+Each combined frame is divided through by the flat. An extra point to note is that I use a bad pixel mask to find coefficients < some threshold value (0.35). This bad pixel mask is named "flat\_bad\_[DATE]" and currently resides in the config/flatfielding dir. A .FITS file with the flatfielding coefficients has also been created and currently resides as "flat\_[DATE]" in the config/flatfielding dir. In this file, bad pixels are stored with a value of "0".
 
-The script I used to make a flat is found in src/measure\_flatfield\_from\_sky.py.
+The script I used to make a flat is src/measure\_flatfield\_from\_sky.py.
 
 v) **BAD PIXEL MASKING**.
 
-A cursory glance over raw array data and you'll see that there are a few notable blotches. There is an option to mask this data by feeding in any number of bad pixel masks (I used two, one from flatfielding, one from nonlinearity corrections). As mentioned before, OK pixels are stored with a value of "1", bad pixels are stored with a value of "NaN".
+A cursory glance over raw array data and you'll see that there are a few notable blotches. There is an option to mask this data by feeding in any number of bad pixel masks (I used two, one from flatfielding, one from nonlinearity corrections). In these files, OK pixels are stored with a value of "1", bad pixels are stored with a value of "NaN", making it easy to combine masks.
 
 
 vi) **SKY SUBTRACTION**.
 
-A median sky is constructed from ALL the combined frames available (corresponding to one per dither). When making the median sky image, each combined frame is first scaled. Scaling is done by iteratively sigma clipping the science images (sigma = 3 = pipeline.ini > sky\_subtraction > bg\_sigma\_clip) to find the background "sky" value, taking the mean of this clipped dataset (should this be a median?), and dividing it by the mean (median?) of reference sky frame values to find a scaling factor which is then applied to the science image. The reference sky frame values are taken as the sky values of the first combined frame, i.e. the scaling factor for the first frame == 1.
+A median sky is constructed from ALL the combined frames available (corresponding to one per dither). When making the median sky image, each combined frame has its average sky value OFFSET to a reference average value. The sky values are found by iteratively sigma clipping the science images (sigma = 3 = pipeline.ini > sky\_subtraction > bg\_sigma\_clip). The offset is achieved by taking the mean of this clipped dataset, and differencing it by the mean of reference sky frame values to find an offset factor which is then applied to the science image. The reference sky frame values are taken as the sky values of the first combined frame, i.e. there is no offset for the first dither position in the sequence.
 
-When subtracting the sky contribution from each combined frame, the median sky is scaled again: sigma clip the science frame to find the sky values, take the mean, then divide this mean by the median of the constructed median sky. The scaled median sky is then subtracted off.
+When subtracting the sky contribution from each combined frame, the median sky is offset again: sigma clip the science frame to find the sky values, take the mean, then difference it by the mean of the constructed median sky. The offset median sky is then subtracted off.
 
 Any cold/hot pixels in the array will propagate through to the final median sky. If bad pixel masking has been selected, then each NaN in the array is locally median smoothed (box size = 5 = pipeline.ini > sky\_subtraction > smoothing\_box\_size).
 
@@ -128,13 +133,6 @@ In pipeline.ini, you'll find:
 
 * each routine has a "do" parameter, allowing toggling of that particular stage. Note that if you set frame\_combination.do to 0, it will not be able to proceed past reference subtraction.
 * "quit" parameters for most routines, telling the pipeline to stop after this stage. This was a requirement when we were considering on-site processing, you should never need to set quit for any routine.
-* a "write\_LT\_file" parameter, which, if quit is NOT set, will make \_1.fits images. If it IS set, it will make intermediate images (\_0.fits) with the data processed up to the point at which it was told to quit.
+* a "write\_LT\_file" parameter which, if set, will make \_1.fits images. 
 * "hard" parameters to produce temporary files showing the output of the processed data up to the point.
-
-
-**IF YOU WANT TO CHANGE THE ORDER OF PROCESSES**:
-
-I suspect that I should do this as it involves fiddling with the code.
-
-For reference, the code blocks containing nonlinearity correction, flatfielding, bad pixel masking and sky subtraction (delineated by "# -------------------------") *should* all be switchable between each other. They take in the same format data and output the same format data. This is NOT true of reference subtraction, frame combination and registration/stacking, e.g. reference subtraction expects all the fowler pair files for a given dither, whereas nonlinearity correction expects only the combined frame.
 

@@ -30,8 +30,10 @@ class flatfielding:
                 self.err.set_code(24, is_critical=True)     
             return data_cor, hdr           
         
-    def read_fcor_coeffs(self, path):
+    def read_fcor_coeffs(self, path, flip=False):
         if not os.path.exists(path):
             self.err.set_code(21, is_critical=True)
         data, hdr = read_FITS_file(path)
+        if flip:
+            data = np.fliplr(data)
         self.coeffs = data        

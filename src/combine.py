@@ -50,6 +50,8 @@ class combine():
         
         this_CDS  = d_e - d_s   
         hdr = hdrs[0]
+        
+        # add EXPTIME header
         hdr['EXPTIME'] = h_e['INTTIME'] - h_s['INTTIME']
         
         # apply nonlinearity correction if it's been requested
@@ -81,7 +83,7 @@ class combine():
                     grp_2_idxs.append(idx)     
                     
         if len(grp_1_idxs) != len(grp_2_idxs):
-            err.set_code(32, is_critical=True)                                 
+            self.err.set_code(32, is_critical=True)                                 
         
         # calculate rates
         delta = d_2_inttime = hdrs[1]['INTTIME'] - hdrs[0]['INTTIME']
@@ -91,6 +93,7 @@ class combine():
         
         # calculate CDS for each fowler pair
         datas_diff = []
+        exptimes = []
         for idx in range(len(grp_1_idxs)):
             g1_idx = grp_1_idxs[idx]
             g2_idx = grp_2_idxs[idx]
@@ -101,10 +104,15 @@ class combine():
                     self.err.set_code(37, is_warning=True)
                 this_pair_CDS, hdrs[g1_idx] = self._correct_nonlinearity(data=this_pair_CDS, hdr=hdrs[g1_idx], rates=rates, lcor=lcor)  
             datas_diff.append(this_pair_CDS)
+            
+            exptimes.append(hdrs[g2_idx]['INTTIME'] - hdrs[g1_idx]['INTTIME']) 
 
         # average pairs
         data = np.mean(datas_diff[0:f_pairs], axis=0) 
         hdr = hdrs[0]
+        
+        # add EXPTIME key
+        hdr['EXPTIME'] = np.mean(exptimes)
         
         # amend headers  
         hdr = self._purge_obsolete_headers(hdr)

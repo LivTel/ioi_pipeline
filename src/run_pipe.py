@@ -171,7 +171,7 @@ class run_pipe():
                 self.session.add_amend_opt_header('L1LCORF', os.path.basename(nonlincor_coeff_path), 'nonlinearity coeff file used')
                 self.session.file_ext = self.session.file_ext + ".lcor"
                 lcor = nonlinearity_correction(logger, err) 
-                lcor.read_lcor_coeffs(nonlincor_coeff_path, nonlincor_order)
+                lcor.read_lcor_coeffs(nonlincor_coeff_path, nonlincor_order, flip=params['flip'])
             else:
                 logger.info("[run_pipe.go] No linearity correction requested.") 
                 self.session.add_amend_opt_header('L1LCOR', 0, 'linearity corrected')  
@@ -195,10 +195,7 @@ class run_pipe():
                         err.set_code(6, is_critical=True)
                         
             self.session.set_session_vars_post_combine(file_data_post_combine, file_hdr_post_combine, rates)          # this sets file_[data||hdr]_[ss||nonss] and rates vars.              
-                
-            if params['twilight']:
-                print np.mean(self.session.file_data_nonss[0][0])
-
+            
             if combination_quit:
                 logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
                 return err.current_code   
@@ -212,7 +209,7 @@ class run_pipe():
                 self.session.add_amend_opt_header('L1FLATF', os.path.basename(ff_coeff_path), 'flatfield file used')
                 self.session.file_ext = self.session.file_ext + ".fcor"
                 ff = flatfielding(logger, err)
-                ff.read_fcor_coeffs(ff_coeff_path)
+                ff.read_fcor_coeffs(ff_coeff_path, flip=params['flip'])
                 for idx_1, run in enumerate(self.session.file_data_nonss):
                   for idx_2, f in enumerate(run):
                       logger.info("[run_pipe.go] Applying flatfield correction to run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
@@ -241,11 +238,11 @@ class run_pipe():
                 self.session.add_amend_opt_header('L1BADPXL', os.path.basename(nonlincor_badpix_path), 'bad pixel mask used (linearity)')            
                 self.session.file_ext = self.session.file_ext + ".bp"
                 bp = bad_pixel_mask(logger, err)
-                if "FLAT" in bp_which:
-                    bp.read_mask(nonlincor_badpix_path) # nonlinearity bad pixel mask
-                    logger.info("[run_pipe.go] Using bad pixel mask: " + os.path.basename(nonlincor_badpix_path))
                 if "LIN" in bp_which:
-                    bp.read_mask(ff_badpix_path)        # flatfield bad pixel mask
+                    bp.read_mask(nonlincor_badpix_path, flip=params['flip']) # nonlinearity bad pixel mask
+                    logger.info("[run_pipe.go] Using bad pixel mask: " + os.path.basename(nonlincor_badpix_path))
+                if "FLAT" in bp_which:
+                    bp.read_mask(ff_badpix_path, flip=params['flip'])        # flatfield bad pixel mask
                     logger.info("[run_pipe.go] Using bad pixel mask: " + os.path.basename(ff_badpix_path))                
                 for idx_1, run in enumerate(self.session.file_data_nonss):
                     for idx_2, f in enumerate(run):         
@@ -408,7 +405,8 @@ class run_pipe():
 if __name__ == "__main__":
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='../test/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='../test/', dest='dataPath', type=str, help='path to data')    
+
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')
@@ -418,7 +416,7 @@ if __name__ == "__main__":
     group1.add_option('--elo', action='store', default=1, type=int, dest='minExpNum', help='lowest exposure number to use')
     group1.add_option('--ehi', action='store', default=4, type=int, dest='maxExpNum', help='highest exposure number to use')    
     group1.add_option('--log', action='store', default='INFO', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')
-    group1.add_option('--t', action='store_true', dest='twilight', help='print mean level?')
+    group1.add_option('--f', action='store_true', dest='flip', help='flip calibration data about x axis?')
     parser.add_option_group(group1)
     
     group2 = optparse.OptionGroup(parser, "LT specific general parameters")    
@@ -449,9 +447,9 @@ if __name__ == "__main__":
         'minGrpNum' : int(options.minGrpNum),
         'maxGrpNum' : int(options.maxGrpNum),
         'logLevel' : str(options.logLevel.upper()),
-        'twilight' : bool(options.twilight)
+        'flip' : bool(options.flip)
     }
-
+    
     # console logging
     logger = logging.getLogger('run_pipe')
     logger.setLevel(getattr(logging, params['logLevel']))

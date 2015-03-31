@@ -36,12 +36,14 @@ class nonlinearity_correction:
         data, hdr = self._evaluate_correction(data, hdr, rates) 
         return data, hdr
      
-    def read_lcor_coeffs(self, path, order):
+    def read_lcor_coeffs(self, path, order, flip=False):
         if not os.path.exists(path):
             self.err.set_code(7, is_critical=True)
         for i in range(order+1):
             self.logger.info("[nonlinearity_correction.execute] Appending order " + str(i))  
             data, hdr = read_FITS_file(path, i)
+            if flip:
+                data = np.fliplr(data)
             self.coeffs.append(data)
 
          

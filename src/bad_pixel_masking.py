@@ -41,8 +41,10 @@ class bad_pixel_mask:
             write_FITS_file(out, data, hdr, opt_hdr=opt_hdr)
         return data, hdr           
            
-    def read_mask(self, mask_path):
+    def read_mask(self, mask_path, flip=False):
         if not os.path.exists(mask_path):
             self.err.set_code(27, is_critical=True)
         data, hdr = read_FITS_file(mask_path)
+        if flip:
+            data = np.fliplr(data)
         self.mask_data.append(data)  

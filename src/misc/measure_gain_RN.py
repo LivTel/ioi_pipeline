@@ -16,6 +16,7 @@ b) requires a directory structure like
    
 n.b. for FS, note that you will need to set the .ini file to reflect the number of
 pairs!
+n.b.2 sometimes you'll need to change the number of bins around if the fit fails.
 '''
 import sys
 import optparse
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/16/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/18/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')    
@@ -191,8 +192,8 @@ if __name__ == "__main__":
             s2_lo = int(s2)
             s2_hi = int(s2+params['windowSize']+1)
             for i in range(0, len(f_r1_data), 1):
-                f_sect_r1 = f_r1_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r1_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
-                f_sect_r2 = f_r2_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r2_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])   # use median otherwise we add another component of readout noise!
+                f_sect_r1 = f_r1_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r1_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])*frmtime   # use median otherwise we add another component of readout noise!
+                f_sect_r2 = f_r2_data[i][s1_lo:s1_hi, s2_lo:s2_hi] + np.median(f_r2_rates[i][s1_lo:s1_hi, s2_lo:s2_hi])*frmtime   # use median otherwise we add another component of readout noise!
 
                 ## get means/stds of sections for each file
                 this_mean_r1 = np.mean(f_sect_r1)
@@ -237,13 +238,13 @@ if __name__ == "__main__":
     # plot RN        
     ## set up some RN histogram attributes
     rn_median = np.median(RN)
-    lim = [rn_median-15, rn_median+15]
-    n_bins = 50
+    lim = [rn_median-20, rn_median+20]
+    n_bins = 20
     bin_width = (lim[1]-lim[0])/n_bins  
     
     plt.figure()
-    n, bins, patches = plt.hist(RN, bins=np.arange(lim[0],lim[1],bin_width), label='data')                                                        # histogram
-    popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(RN),np.nanstd(RN)])             # gauss fit
+    n, bins, patches = plt.hist(RN, bins=np.arange(lim[0],lim[1],bin_width), label='data')                                                       # histogram
+    popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,rn_median,np.nanstd(RN)])                 # gauss fit
         
     plt.title("Histogram RN Plot (" + str(gain) + "dB)")
     plt.xlabel("RN (e-)")
@@ -264,12 +265,12 @@ if __name__ == "__main__":
     ## set up some GAIN histogram attributes
     gain_median = np.median(CALC_GAIN)
     lim = [gain_median-1, gain_median+1]
-    n_bins = 40
+    n_bins = 50
     bin_width = (lim[1]-lim[0])/n_bins   
 
     plt.figure() 
     n, bins, patches = plt.hist(CALC_GAIN, bins=np.arange(lim[0], lim[1], bin_width), label='data')                                                      # histogram
-    popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.nanmean(CALC_GAIN),np.nanstd(CALC_GAIN)])      # gauss fit
+    popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,gain_median,np.nanstd(CALC_GAIN)])                # gauss fit
         
     plt.title("Histogram Gain Plot (" + str(gain) + "dB)")
     plt.xlabel("Gain (e-)")

@@ -1,5 +1,7 @@
 '''
     Analyse UTR sequence with and without nonlinearity correction.
+    
+    n.b. the counts measured here are after CDS subtraction.
 '''
 import sys
 import optparse
@@ -23,13 +25,13 @@ if __name__ == "__main__":
     
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/13/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/15/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')    
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')      
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
-    group1.add_option('--ghi', action='store', default=20, type=int, dest='maxGrpNum', help='highest group number to use ')
+    group1.add_option('--ghi', action='store', default=50, type=int, dest='maxGrpNum', help='highest group number to use ')
     group1.add_option('--pl', action='store_true', dest='plt', help='make hard plot?') 
     parser.add_option_group(group1)
     
@@ -102,7 +104,9 @@ if __name__ == "__main__":
         data = pipe.session.file_data_nonss[0][0]
         rates = pipe.session.rates[0][0]
         exptime_nolin.append(pipe.session.file_hdr_nonss[0][0]['EXPTIME'])
-        data_mean_nolin.append(np.mean(data+rates))
+        frmtime = pipe.session.file_hdr_nonss[0][0]['FRMTIME']
+        missing_flux = rates*frmtime
+        data_mean_nolin.append(np.nanmean(data+missing_flux))
 
     # CORRECTED
     params['pipeCfgPath'] = "config/pipeline_lin_2.ini"        
@@ -117,7 +121,9 @@ if __name__ == "__main__":
         data = pipe.session.file_data_nonss[0][0]
         rates = pipe.session.rates[0][0]
         exptime_lin.append(pipe.session.file_hdr_nonss[0][0]['EXPTIME'])
-        data_mean_lin.append(np.mean(data+rates))
+        frmtime = pipe.session.file_hdr_nonss[0][0]['FRMTIME']
+        missing_flux = rates*frmtime
+        data_mean_lin.append(np.nanmean(data+missing_flux))
      
     fig = plt.figure()
     plt.subplot(2,1,1)
@@ -125,13 +131,13 @@ if __name__ == "__main__":
     plt.plot(exptime_lin, data_mean_lin, 'bx-', label="linearity correction")
 
     # linearity line
-    fitted_coeffs = np.polyfit([0, exptime_lin[0]], [0, data_mean_lin[0]], 1)
-    plt.plot([0, exptime_lin[-1]], np.polyval(fitted_coeffs, [0, exptime_lin[-1]]), 'k--', label='linear')
+    fitted_coeffs = np.polyfit([exptime_lin[0], exptime_lin[1]], [data_mean_nolin[0], data_mean_nolin[1]], 1)
+    plt.plot([0, exptime_lin[-1]], np.polyval(fitted_coeffs, [0, exptime_nolin[-1]]), 'k--', label='linear')
     
     plt.ylim([0,66000])
     plt.title("Flux v EXPTIME")
     plt.xlabel("EXPTIME (s)")
-    plt.ylabel("Mean counts (ADU)")
+    plt.ylabel("Mean counts after CDS (ADU)")
     plt.legend(loc='upper left', fontsize=10)
     
     plt.subplot(2,1,2)   
@@ -139,14 +145,14 @@ if __name__ == "__main__":
     plt.plot(data_mean_lin, (abs(np.polyval(fitted_coeffs, exptime_lin)-data_mean_lin)/np.polyval(fitted_coeffs, exptime_lin))*100, 'bx-', label='residual nonlinearity % (corrected)')   
     
     # 1% RESIDUAL nonlinearity line
-    # plt.plot(data_mean_lin, [1 for i in range(len(data_mean_lin))] , 'k--', label="5% nonlinearity")   
+    plt.plot(data_mean_lin, [1 for i in range(len(data_mean_lin))] , 'k--', label="1% nonlinearity")   
      
     plt.title("Residual nonlinearity")
-    plt.xlabel("Mean counts (ADU)")
+    plt.xlabel("Mean counts after CDS (ADU)")
     plt.ylabel("Nonlinearity %")
     plt.legend(loc='upper left', fontsize=10)
     plt.yscale('log')
-    plt.ylim([0.1,10])
+    plt.ylim([0.1,100])
      
     if params['plt']: 
         fig.tight_layout()

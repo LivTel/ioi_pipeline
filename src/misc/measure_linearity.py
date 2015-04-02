@@ -20,7 +20,6 @@ from run_pipe import run_pipe
 from errors import errors
 
 if __name__ == "__main__":
-  
     np.seterr(all='raise')
     
     parser = optparse.OptionParser()
@@ -51,6 +50,7 @@ if __name__ == "__main__":
         'maxExpNum' : 16,        
         'logLevel' : str(options.logLevel.upper()),
         'plt' : bool(options.plt),
+        'flip' : False
     }
     
     # console logging

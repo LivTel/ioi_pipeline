@@ -10,14 +10,17 @@ class stack():
         
     def _add_gain_keywords(self, hdr):
         if int(hdr['ASICGAIN']) == 8:
-            hdr['GAIN'] = 2.8
-            hdr['EPERDN'] = 2.8
-        elif int(hdr[0]['ASICGAIN']) == 10:
-            hdr['ASICGAIN'] = 2.2
-            hdr['EPERDN'] = 2.2
-        elif int(hdr[0]['ASICGAIN']) == 12:
-            hdr['GAIN'] = 1.7
-            hdr['EPERDN'] = 1.7
+            hdr['GAIN'] = 3.05
+            hdr['EPERDN'] = 3.05
+        elif int(hdr['ASICGAIN']) == 10:
+            hdr['ASICGAIN'] = 2.12
+            hdr['EPERDN'] = 2.12
+        elif int(hdr['ASICGAIN']) == 12:
+            hdr['GAIN'] = 1.5
+            hdr['EPERDN'] = 1.5
+        elif int(hdr['ASICGAIN']) == 13:
+            hdr['GAIN'] = 1.06
+            hdr['EPERDN'] = 1.06            
         else:
             err.set_code(34, is_critical=False)
         return hdr

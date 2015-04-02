@@ -4,6 +4,7 @@ import sys
 import pyfits
 from scipy.optimize import curve_fit
 import math
+import matplotlib
 
 fname = sys.argv[1]
 
@@ -24,9 +25,14 @@ lim_0 = (-1000, 1000)
 lim_1 = (0.7, 1.3)
 lim_2 = (-0.000006, 0.000009)
 lim_3 = (-0.1*pow(10, -9), 0.1*pow(10, -9))
-nbins = 100
+nbins = 50
 
 lim = [lim_0, lim_1, lim_2, lim_3]
+
+font = {'family' : 'normal',
+        'weight' : 'normal',
+        'size'   : 12}
+matplotlib.rc('font', **font)
 
 fig = plt.figure()
 for idx, ext in enumerate(fits): 
@@ -37,8 +43,9 @@ for idx, ext in enumerate(fits):
     popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,np.median(data),np.median(data)]) 
     
     plt.subplot(2,2,idx+1)
-    plt.plot(bins,gauss(bins,*popt),'r-', linewidth=2, label='fit (centre=' + str(sf(popt[1],3)) +')')
-    plt.hist(data_filtered, bins=nbins, label='data')
+    plt.plot(bins,gauss(bins,*popt),'k--', linewidth=2, label='fit (centre=' + str(sf(popt[1],3)) +')')
+    n, bins, patches = plt.hist(data_filtered, bins=nbins, label='data')
+    plt.setp(patches, 'facecolor', 'w', 'alpha', 1)
     plt.ticklabel_format(axis='x', style='sci', scilimits=lim[idx])
     plt.xlim(lim[idx])
     plt.title("Distribution of coefficients for order " + str(idx))

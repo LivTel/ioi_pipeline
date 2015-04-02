@@ -100,8 +100,8 @@ class combine():
             this_pair_CDS = datas[g2_idx] - datas[g1_idx]
             # apply nonlinearity correction if it's been requested
             if lcor is not None:
-                if hdrs[g1_idx]['CLOCKING'] == 0:
-                    self.err.set_code(37, is_warning=True)
+                #if hdrs[g1_idx]['CLOCKING'] == 0:
+                #    self.err.set_code(37, is_warning=True)
                 this_pair_CDS, hdrs[g1_idx] = self._correct_nonlinearity(data=this_pair_CDS, hdr=hdrs[g1_idx], rates=rates, lcor=lcor)  
             datas_diff.append(this_pair_CDS)
             

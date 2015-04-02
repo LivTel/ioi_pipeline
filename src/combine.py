@@ -56,8 +56,8 @@ class combine():
         
         # apply nonlinearity correction if it's been requested
         if lcor is not None:
-            if hdr['CLOCKING'] == 0:
-                self.err.set_code(37, is_warning=True)
+            #if hdr['CLOCKING'] == 0:
+            #    self.err.set_code(37, is_warning=True)
             this_CDS, hdr = self._correct_nonlinearity(data=this_CDS, hdr=hdr, rates=rates, lcor=lcor)  
                  
         # amend headers  

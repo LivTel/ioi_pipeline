@@ -77,7 +77,7 @@ if __name__ == "__main__":
     flat = np.mean(datas_cor, axis=0) 
         
     # make flat and set "bad pixels" to 1        
-    bad_array   = np.where(np.logical_and(flat < params['badThreshLower'], flat > params['badThreshUpper']))   # establish bad pixels
+    bad_array   = np.where(np.logical_or(flat < params['badThreshLower'], flat > params['badThreshUpper']))   # establish bad pixels
     flat[bad_array] = 1 
     if params['fits']:
         if params['clobber']:

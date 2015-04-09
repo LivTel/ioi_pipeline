@@ -70,11 +70,9 @@ if __name__ == "__main__":
     flat[bad_array] = 1 
     if params['fits']:
         if params['clobber']:
-            try:  
+            if os.path.exists("flat.fits"):
                 os.remove("flat.fits")
                 logger.info("clobber set. removed flat.fits file")
-            except OSError:
-                pass   
         logger.info("writing flat")   
         if params['flip']:
             flat = np.fliplr(flat)
@@ -89,11 +87,8 @@ if __name__ == "__main__":
     bad[bad_array] = np.nan
     if params['fits']:   
         if params['clobber']:
-            try:  
-                os.remove("flat_bad.fits")
-                logger.info("clobber set. removed flat_bad.fits file")
-            except OSError:
-                pass     
+            if os.path.exists("flat_bad.fits"):
+                logger.info("clobber set. removed flat_bad.fits file") 
         logger.info("writing bad pixel map")    
         if params['flip']:
             bad = np.fliplr(bad)

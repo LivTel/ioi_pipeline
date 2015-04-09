@@ -14,7 +14,8 @@ from utility import read_FITS_file, write_FITS_file
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--f', action='append', dest='paths', help='paths to sky files')
-    parser.add_argument('--bt', action='store', dest='badThresh', default=0.35, help='coefficient threshold to be flagged as bad pixel')
+    parser.add_argument('--btl', action='store', dest='badThreshLower', default=0.35, help='lower coefficient threshold to be flagged as bad pixel')
+    parser.add_argument('--btu', action='store', dest='badThreshUpper', default=2.0, help='upper coefficient threshold to be flagged as bad pixel')
     parser.add_argument('--log', action='store', default='INFO', dest='logLevel', type=str, help='level (DEBUG|INFO|WARNING|ERROR|CRITICAL)') 
     parser.add_argument('--fits', action='store_true', dest='fits', help='make flat and bad pixel map FITS files')
     parser.add_argument('--fl', action='store_true', dest='flip', help='flip array on write?')
@@ -25,7 +26,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     params = {
         'paths' : args.paths,
-        'badThresh' : float(args.badThresh),
+        'badThreshLower' : float(args.badThreshLower),
+        'badThreshUpper' : float(args.badThreshUpper),
         'logLevel' : str(args.logLevel),
         'fits' : bool(args.fits),
         'flip' : bool(args.flip),
@@ -75,7 +77,7 @@ if __name__ == "__main__":
     flat = np.mean(datas_cor, axis=0) 
         
     # make flat and set "bad pixels" to 1        
-    bad_array   = np.where(flat < params['badThresh'])   # establish bad pixels
+    bad_array   = np.where(np.logical_and(flat < params['badThreshLower'], flat > params['badThreshUpper']))   # establish bad pixels
     flat[bad_array] = 1 
     if params['fits']:
         if params['clobber']:

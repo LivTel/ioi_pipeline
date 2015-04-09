@@ -17,14 +17,18 @@ if __name__ == "__main__":
     parser.add_argument('--log', action='store', default='INFO', dest='logLevel', type=str, help='level (DEBUG|INFO|WARNING|ERROR|CRITICAL)') 
     parser.add_argument('--fits', action='store_true', dest='fits', help='make flat and bad pixel map FITS files')
     parser.add_argument('--fl', action='store_true', dest='flip', help='flip array on write?')
+    parser.add_argument('--hdu', action='store', dest='hdu', default=0, type=int, help='hdu index to use')
+    parser.add_argument('--o', action='store_true', dest='clobber', default=False, help='clobber existing files on write?')
     
     args = parser.parse_args()
     params = {
         'paths' : args.paths,
         'badThresh' : float(args.badThresh),
         'logLevel' : str(args.logLevel),
-        'fits' : str(args.fits),
-        'flip' : bool(options.flip)
+        'fits' : bool(args.fits),
+        'flip' : bool(args.flip),
+        'hdu' : int(args.hdu),
+        'clobber' : bool(args.clobber)
     }    
     
     # console logging
@@ -49,10 +53,9 @@ if __name__ == "__main__":
     datas_cor = []
     for i in params['paths']:
         if os.path.exists(i):
-            logger.info("reading file " + i)
+            logger.info("reading file " + i + " at HDU " + str(params['hdu']))
             data, hdr = read_FITS_file(i)
-            print i
-            data_mean = np.nanmean(data)
+            data_mean = np.nanmean(data[params['hdu']])
             logger.info("mean of data pre-normalisation is " + str(data_mean))
             logger.info("normalising data") 
             data_cor = data/data_mean
@@ -66,17 +69,36 @@ if __name__ == "__main__":
     bad_array   = np.where(flat < params['badThresh'])   # establish bad pixels
     flat[bad_array] = 1 
     if params['fits']:
+        if params['clobber']:
+            try:  
+                os.remove("flat.fits")
+                logger.info("clobber set. removed flat.fits file")
+            except OSError:
+                pass   
         logger.info("writing flat")   
         if params['flip']:
             flat = np.fliplr(flat)
-        write_FITS_file(out="flat.fits", data=flat, hdr=None)
+        try:
+            write_FITS_file(out="flat.fits", data=flat, hdr=None)
+        except IOError:
+            logger.info("flat.fits file already exists, and hasn't been clobbered")
+           
     
     # make bad pixel map
     bad         = np.ones(flat.shape)   
     bad[bad_array] = np.nan
     if params['fits']:   
+        if params['clobber']:
+            try:  
+                os.remove("flat_bad.fits")
+                logger.info("clobber set. removed flat_bad.fits file")
+            except OSError:
+                pass     
         logger.info("writing bad pixel map")    
-         if params['flip']:
+        if params['flip']:
             bad = np.fliplr(bad)
-        write_FITS_file(out="flat_bad.fits", data=bad, hdr=None)    
+        try:
+            write_FITS_file(out="flat_bad.fits", data=bad, hdr=None)
+        except IOError:
+            logger.info("flat_bad.fits file already exists, and hasn't been clobbered")            
         

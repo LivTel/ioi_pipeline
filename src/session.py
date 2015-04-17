@@ -76,12 +76,14 @@ class session:
             data        = self.file_data_nonss
             hdr         = self.file_hdr_nonss
             opt_hdr     = self.file_opt_hdr_nonss
-            self.opt_hdr['EXTNAME'] = extname
+            for idx, i in enumerate(opt_hdr):
+                opt_hdr[idx]['EXTNAME'] = extname
         elif extname == "IM_SS":
             data        = self.file_data_ss
             hdr         = self.file_hdr_ss
             opt_hdr     = self.file_opt_hdr_ss
-            self.opt_hdr['EXTNAME'] = extname
+            for idx, i in enumerate(opt_hdr):
+                opt_hdr[idx]['EXTNAME'] = extname
         else:
             self.err.set_code(35, is_critical=True)
             
@@ -102,7 +104,8 @@ class session:
             data        = self.file_data_stk
             hdr         = self.file_hdr_stk   
             opt_hdr     = self.file_opt_hdr_stk
-            self.opt_hdr['EXTNAME'] = extname
+            for idx, i in enumerate(opt_hdr):
+                opt_hdr[idx]['EXTNAME'] = extname
         else:
             self.err.set_code(36, is_critical=True)
 

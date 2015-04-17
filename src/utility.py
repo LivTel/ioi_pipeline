@@ -110,9 +110,9 @@ def find_sort_files_LT(dataPath, minRunNum, maxRunNum, minDithNum, maxDithNum, m
                 n_files = n_files + len(files)
                 
     if n_files == 0:
-        errors.set_code(3, is_critical=True)
+        errors.set_code(3, is_critical=False)
         
-    return files_sorted
+    return files_sorted, n_files
   
 def find_sort_files_teledyne(dataPath, minRunNum, maxRunNum, minGrpNum, maxGrpNum, minExpNum, maxExpNum, logger, errors):
     ''' 
@@ -129,9 +129,9 @@ def find_sort_files_teledyne(dataPath, minRunNum, maxRunNum, minGrpNum, maxGrpNu
             n_files = n_files + len(files)
 
     if n_files == 0:
-        errors.set_code(3, is_critical=True)
+        errors.set_code(3, is_critical=False)
         
-    return files_sorted
+    return files_sorted, n_files
   
 def read_FITS_file(f, hdu=0):
     f_fits = read(f)

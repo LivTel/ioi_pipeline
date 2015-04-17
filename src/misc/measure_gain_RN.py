@@ -254,7 +254,8 @@ class measure_gain_RN:
             plt.xlim(lim)
             plt.ylim([0, np.ceil(max(n) + y_pad)])
             plt.legend(loc='upper left', fontsize=10)
-            if self.params['fits']:
+            
+            if self.params['hard']:
                 plt.savefig("gain.png")   
             
             logger.info("Calculated gain is " + str(sf(popt[1], 3)) + "e-/ADU.")    
@@ -272,7 +273,7 @@ if __name__ == "__main__":
     group1.add_option('--r', action='store', dest='fit', default="0,10000", help='ADU range to consider when fitting')
     group1.add_option('--c', action='store', default=1, type=float, dest='fitCoeff', help='Coeffient of fit to signal')
     group1.add_option('--win', action='store', dest='windowSize', default=50, type=int, help='size of window to use (px)')  
-    group1.add_option('--hard', action='store_true', dest='fits', help='make hard plot?')    
+    group1.add_option('--hard', action='store_true', dest='hard', help='make hard plot?')    
     group1.add_option('--m', action='store', dest='method', default='UTR', type=str, help='method (UTR||FOWLER)')
     group1.add_option('--gain', action='store_true', dest='calc_gain', help='calculate gain?')
     group1.add_option('--read', action='store_true', dest='calc_read', help='calculate read?')
@@ -296,7 +297,7 @@ if __name__ == "__main__":
         'fit' : str(options.fit).split(','),
         'fitCoeff' : float(options.fitCoeff),
         'windowSize' : int(options.windowSize),
-        'fits' : bool(options.fits),
+        'hard' : bool(options.hard),
         'method' : str(options.method),
         'calcGain': bool(options.calc_gain),
         'calcRead': bool(options.calc_read),

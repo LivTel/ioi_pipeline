@@ -38,8 +38,7 @@ class run_pipe():
             full_path_src                       = str(path_base + paths_cfg['general']['path_src'].rstrip("/") + "/")
             full_path_nonlinearity_corrections  = str(paths_cfg['nonlinearity_corrections']['path_nonlinearity_corrections'].rstrip("/") + "/")    
             full_path_flatfielding_corrections  = str(paths_cfg['flatfielding']['path_flatfielding_corrections'].rstrip("/") + "/")      
-            file_naming                         = str(pipe_cfg['general']['file_naming'])
-            write_lt_file                       = bool(int(pipe_cfg['general']['write_lt_file']))  
+            write_output                        = bool(int(pipe_cfg['general']['write_output']))  
             ## reference_subtraction
             do_refsub                           = bool(int(pipe_cfg['reference_subtraction']['do']))   
             refsub_method                       = str(pipe_cfg['reference_subtraction']['method'].upper()) 
@@ -84,7 +83,8 @@ class run_pipe():
             do_stacking                         = bool(int(pipe_cfg['stacking']['do']))
             stacking_hard                       = bool(int(pipe_cfg['stacking']['hard']))   
             stacking_method                     = str(pipe_cfg['stacking']['method'])
-        except KeyError:
+        except KeyError, e:
+            logger.info("[run_pipe.go] Key/section " + str(e) + " appears to be missing.")
             err.set_code(8, is_critical=True)
             
         # ----------------------
@@ -101,13 +101,28 @@ class run_pipe():
         # ----------------------------
         # ---- find files in path ----
         # ---------------------------- 
-        logger.info("[run_pipe.go] Searching for files in " + params['dataPath']) 
-        if file_naming == "TELEDYNE":
-            files = find_sort_files_teledyne(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minGrpNum'], params['maxGrpNum'], params['minExpNum'], params['maxExpNum'], logger, err)  
-        elif file_naming == "LT":
-            files = find_sort_files_LT(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minDithNum'], params['maxDithNum'], params['minExpNum'], params['maxExpNum'], params['date'], logger, err)
+        logger.info("[run_pipe.go] Searching for LT files in " + params['dataPath']) 
+        try:
+            files, n = find_sort_files_LT(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minDithNum'], params['maxDithNum'], params['minExpNum'], params['maxExpNum'], params['date'], logger, err)
+        except KeyError:        # this may happen if relevant LT input params haven't been set when instantiating, e.g. date.
+            n = 0
+        if n == 0:
+            logger.info("[run_pipe.go] No LT files found in " + params['dataPath'] + "or relevant LT parameters haven't been set.") 
+            logger.info("[run_pipe.go] Searching for Teledyne files in " + params['dataPath'])
+            try:
+                files, n = find_sort_files_teledyne(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minGrpNum'], params['maxGrpNum'], params['minExpNum'], params['maxExpNum'], logger, err)
+            except KeyError:    # this may happen if relevant Teledyne input params haven't been set when instantiating.
+                n = 0
+            if n == 0:
+                logger.info("[run_pipe.go] No Teledyne files found in " + params['dataPath'] + "or relevant Teledyne parameters haven't been set.") 
+                err.set_code(17, is_critical=True)
+            else:
+                logger.info("[run_pipe.go] Assuming Teledyne nomenclature.")
+                are_LT_files = False
         else:
-            err.set_code(17, is_critical=True)
+            logger.info("[run_pipe.go] Assuming LT nomenclature.")  
+            are_LT_files = True
+            
         self.session.add_files(files)
     
         # -------------------------------   
@@ -260,29 +275,28 @@ class run_pipe():
                     return err.current_code   
             else:
                 logger.info("[run_pipe.go] No bad pixel masking requested.") 
-                self.session.add_amend_opt_header('L1BADPX', 0, 'bad pixel mask applied')    
-            self.session.set_opt_header_nonss()  
+                self.session.add_amend_opt_header('L1BADPX', 0, 'bad pixel mask applied')   
+            self.session.set_opt_header_this_run_nonss()  
 
 
-            if file_naming == "LT":     # this only makes sense in the context of LT files
-                if write_lt_file and file_naming:
-                    logger.info("[run_pipe.go] Writing IM_NONSS session data out...")
-                    self.session.write_combined_data_as_LT(params['workingDir'], extname="IM_NONSS")              
-
-                # -------------------------   
-                # ---- sky subtraction ----   
-                # -------------------------  
+            if are_LT_files:     # these processes only make sense in the context of LT files.     
+                data    = self.session.file_data_nonss     # pointer to allow for option of ss or nonss data in registration/stacking.
+                hdr     = self.session.file_hdr_nonss      # pointer to allow for option of ss or nonss data in registration/stacking.    
+                # -----------------------------------   
+                # ---- sky subtraction (LT only) ----   
+                # -----------------------------------
                 if do_SS:
                     logger.info("[run_pipe.go] Beginning sky subtraction process.") 
-                    self.session.add_amend_opt_header('L1SKYSUB', 1, 'sky subtracted')
                     for idx_1, run in enumerate(self.session.file_data_nonss): 
                         ## subtract sky from combined frames if more than one dither position exists
                         if len(run) == 1:
                             logger.info("[run_pipe.go] Only one dither position found. Data will not be sky subtracted.")
+                            self.session.add_amend_opt_header('L1SKYSUB', 0, 'sky subtracted')
                             self.session.file_data_ss[idx_1][idx_2] = None
                             self.session.file_hdr_ss[idx_1][idx_2]  = None
-                        else:
+                        else:  
                             logger.info("[run_pipe.go] Run:" + str(idx_1+params['minRunNum']))
+                            self.session.add_amend_opt_header('L1SKYSUB', 1, 'sky subtracted')
                             self.session.file_ext = self.session.file_ext + ".ss"
                             ss = sky_subtraction(logger, err)
                         
@@ -307,98 +321,123 @@ class run_pipe():
                                     self.session.file_hdr_ss[idx_1][idx_2]  = rtn_hdr 
                                 else:
                                     err.set_code(6, is_critical=True)    
-                        self.session.set_opt_header_ss()  
+                        self.session.set_opt_header_this_run_ss()  
                         if ss_quit: 
                             logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
-                            return err.current_code
-                          
-                    if write_lt_file:
-                        logger.info("[run_pipe.go] Writing IM_SS session data out...")
-                        self.session.write_combined_data_as_LT(params['workingDir'], extname="IM_SS", allow_append=True)
-
-                    # -----------------------------------------  
-                    # ---- SS image registration (LT only) ----   
-                    # -----------------------------------------
-                    if file_naming == "LT":
-                        if do_registration:   
-                            logger.info("[run_pipe.go] Beginning registration process.")
-                            self.session.add_amend_opt_header('L1REG', 1, 'registered')
-                            for idx_1, run in enumerate(self.session.file_data_ss): 
-                                ## subtract sky from combined frames if more than one dither position exists
-                                if len(run) == 1:
-                                    logger.info("[run_pipe.go] Only one dither position found. Data will not be registered.")
-                                    pass
-                                else:              
-                                    logger.info("[run_pipe.go] Run:" + str(idx_1+params['minRunNum']))
-                                    self.session.file_ext = self.session.file_ext + ".reg"
-                                    bp_combined_mask_data = None
-                                    if do_bp_masking:
-                                        bp_combined_mask_data = bp.combine_masks()
-                                    reg = register(0, self.session.file_data_ss[idx_1], self.session.file_hdr_ss[idx_1], bp_combined_mask_data, logger, err) 
-                                    this_outPaths = []
-                                    this_mask_outPaths = []
-                                    for idx_2, d in enumerate(run):
-                                        this_outPaths.append(params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits")
-                                        this_mask_outPaths.append(params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".mask.fits")
-                                    rtn_datas, rtn_hdrs = reg.execute(registration_algorithm, params['workingDir'], fit_geom=registration_fit_geometry, bp_post_reg_thresh=bp_post_reg_thresh, \
-                                                                      hard=registration_hard, outs=this_outPaths, mask_outs=this_mask_outPaths)                   
-                                    if rtn_datas is not None and rtn_hdrs is not None:                    
-                                        self.session.file_data_ss[idx_1] = rtn_datas                
-                                        self.session.file_hdr_ss[idx_1]  = rtn_hdrs   
-                                    else:
-                                        err.set_code(6, is_critical=True)                 
-                                if registration_quit: 
-                                    logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
-                                    return err.current_code
-
-                            # ---------------------------  
-                            # ---- SS image stacking ----   
-                            # --------------------------- 
-                            if do_stacking:
-                                logger.info("[run_pipe.go] Beginning stacking process.")
-                                self.session.add_amend_opt_header('L1STK', 1, 'stacked')
-                                try:
-                                    file_data_post_stacking = []
-                                    file_hdr_post_stacking  = []
-                                    for idx_1, run in enumerate(self.session.file_data_ss): 
-                                        if len(run) == 1:
-                                            logger.info("[run_pipe.go] Only one dither position found. Data will not be stacked.")
-                                            pass
-                                        else: 
-                                            stk = stack(logger, err)
-                                            this_outPath = params['workingDir'] + "comb_stk_" + str(idx_1+params['minRunNum']) + ".fits"                    
-                                            rtn_data, rtn_hdr = stk.execute(datas=self.session.file_data_ss[idx_1], hdrs=self.session.file_hdr_ss[idx_1], \
-                                                                            hard=stacking_hard, method=stacking_method, out=this_outPath, opt_hdr=self.session.opt_hdr)  
-                                            if rtn_data is not None and rtn_hdr is not None:
-                                                file_data_post_stacking.append(rtn_data)
-                                                file_hdr_post_stacking.append(rtn_hdr)
-                                            else:
-                                              err.set_code(6, is_critical=True)             
-                                    self.session.set_opt_header_ss_stk()    
-                                except RuntimeError:
-                                    err.set_code(13, is_critical=True)
-                                    
-                                self.session.set_session_vars_post_stacking(file_data_post_stacking, file_hdr_post_stacking)          # this sets file_[data||hdr]_[nonss]_stk vars.  
-                                
-                                # --------------------------  
-                                # ---- write STK output ----   
-                                # -------------------------- 
-                                if write_lt_file:
-                                    logger.info("[run_pipe.go] Writing SK_SS session data out...")
-                                    self.session.write_stacked_data_as_LT(params['workingDir'], extname="SK_SS")
-                        else:
-                            logger.info("[run_pipe.go] No stacking requested or the absence of a previous operation mean it cannot be performed.")  
-                            self.session.add_amend_opt_header('L1STK', 0, 'stacked')  
-                    else:
-                        logger.info("[run_pipe.go] No registration requested.")  
-                        self.session.add_amend_opt_header('L1REG', 0, 'registered')         
+                            return err.current_code        
+                    data = self.session.file_data_ss  
+                    hdr  = self.session.file_hdr_ss 
                 else:
                     logger.info("[run_pipe.go] No sky subtraction requested.")     
                     self.session.add_amend_opt_header('L1SKYSUB', 0, 'sky subtracted') 
+                    
+                # -----------------------------------------  
+                # ---- SS image registration (LT only) ----   
+                # -----------------------------------------
+                if do_registration:   
+                    logger.info("[run_pipe.go] Beginning registration process.")
+                    for idx_1, run in enumerate(data): 
+                        ## subtract sky from combined frames if more than one dither position exists
+                        if len(run) == 1:
+                            logger.info("[run_pipe.go] Only one dither position found. Data will not be registered.")
+                            self.session.add_amend_opt_header('L1REG', 0, 'registered')
+                        else:              
+                            logger.info("[run_pipe.go] Run:" + str(idx_1+params['minRunNum']))
+                            self.session.add_amend_opt_header('L1REG', 1, 'registered')
+                            self.session.file_ext = self.session.file_ext + ".reg"
+                            bp_combined_mask_data = None
+                            if do_bp_masking:
+                                bp_combined_mask_data = bp.combine_masks()
+                            reg = register(0, data[idx_1], hdr[idx_1], bp_combined_mask_data, logger, err) 
+                            this_outPaths = []
+                            this_mask_outPaths = []
+                            for idx_2, d in enumerate(run):
+                                this_outPaths.append(params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits")
+                                this_mask_outPaths.append(params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".mask.fits")
+                            rtn_datas, rtn_hdrs = reg.execute(registration_algorithm, params['workingDir'], fit_geom=registration_fit_geometry, bp_post_reg_thresh=bp_post_reg_thresh, \
+                                                              hard=registration_hard, outs=this_outPaths, mask_outs=this_mask_outPaths)                   
+                            if rtn_datas is not None and rtn_hdrs is not None:
+                                if do_SS:
+                                    self.session.file_data_ss[idx_1] = rtn_datas                
+                                    self.session.file_hdr_ss[idx_1]  = rtn_hdrs
+                                else:
+                                    self.session.file_data_nonss[idx_1] = rtn_datas                
+                                    self.session.file_hdr_nonss[idx_1]  = rtn_hdrs                                    
+                            else:
+                                err.set_code(6, is_critical=True)                 
+                        if registration_quit: 
+                            logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
+                            return err.current_code
+
+                    # -------------------------------------  
+                    # ---- SS image stacking (LT only) ----   
+                    # ------------------------------------- 
+                    if do_stacking:
+                        logger.info("[run_pipe.go] Beginning stacking process.")
+                        try:
+                            file_data_post_stacking = []
+                            file_hdr_post_stacking  = []
+                            for idx_1, run in enumerate(data): 
+                                if len(run) == 1:
+                                    logger.info("[run_pipe.go] Only one dither position found. Data will not be stacked.")
+                                    self.session.add_amend_opt_header('L1STK', 0, 'stacked')
+                                else: 
+                                    self.session.add_amend_opt_header('L1STK', 1, 'stacked')
+                                    stk = stack(logger, err)
+                                    this_outPath = params['workingDir'] + "comb_stk_" + str(idx_1+params['minRunNum']) + ".fits"                    
+                                    rtn_data, rtn_hdr = stk.execute(datas=data[idx_1], hdrs=hdr[idx_1], \
+                                                                    hard=stacking_hard, method=stacking_method, out=this_outPath, opt_hdr=self.session.opt_hdr)  
+                                    if rtn_data is not None and rtn_hdr is not None:
+                                        file_data_post_stacking.append(rtn_data)
+                                        file_hdr_post_stacking.append(rtn_hdr)
+                                    else:
+                                        err.set_code(6, is_critical=True)             
+                            self.session.set_opt_header_this_run_stk()    
+                        except RuntimeError:
+                            err.set_code(13, is_critical=True)
+                                
+                        self.session.set_session_vars_post_stacking(file_data_post_stacking, file_hdr_post_stacking)          # this sets file_[data&&hdr]_stk vars.        
+                    else:
+                        logger.info("[run_pipe.go] No stacking requested.")  
+                        self.session.add_amend_opt_header('L1STK', 0, 'stacked')  
+                else:
+                    logger.info("[run_pipe.go] No registration requested.")  
+                    self.session.add_amend_opt_header('L1REG', 0, 'registered') 
+            else:
+                logger.info("[run_pipe.go] File naming does not conform to LT nomenclature, processing will not proceed any further.")  
         else:
             logger.info("[run_pipe.go] No frame combination requested.") 
             self.session.add_amend_opt_header('L1FMCO', 0, 'frame combined')
-             
+            
+        # ----------------------  
+        # ---- write output ----   
+        # ----------------------  
+        # 
+        # Each dither position:
+        # a) do_SS set   = IM_SS, IM_NONSS
+        # b) do_SS unset = IM_NONSS
+        #
+        # If stacking successful:
+        # a) do_SS set   = SK_SS
+        # b) do_SS unset = SK_NONSS
+        #
+        if write_output and are_LT_files:
+            if do_SS:
+                logger.info("[run_pipe.go] Writing IM_SS extension session data out...")
+                n = self.session.write_combined_data_as_LT(params['workingDir'], extname="IM_SS")
+                logger.info("[run_pipe.go] " + str(n) + " files written or appended to.")
+            logger.info("[run_pipe.go] Writing IM_NONSS extension session data out...")
+            n = self.session.write_combined_data_as_LT(params['workingDir'], extname="IM_NONSS", allow_append=True)
+            logger.info("[run_pipe.go] " + str(n) + " files written.")            
+            if do_SS:
+                logger.info("[run_pipe.go] Writing SK_SS extension session data out...")
+                n = self.session.write_stacked_data_as_LT(params['workingDir'], extname="SK_SS")
+                logger.info("[run_pipe.go] " + str(n) + " files written or appended to.")
+            else:
+                logger.info("[run_pipe.go] Writing SK_NONSS extension session data out...")
+                n = self.session.write_stacked_data_as_LT(params['workingDir'], extname="SK_NONSS")
+                logger.info("[run_pipe.go] " + str(n) + " files written.")
+                
         logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
         return err.current_code
         

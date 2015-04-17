@@ -24,7 +24,7 @@ class errors():
             14  :       "[data_sky] has not been set.",
             15  :       "Insufficient files to perform sky subtraction.",
             16  :       "Insufficient files to perform stacking.",
-            17  :       "File naming type not understood.",
+            17  :       "No suitable files found in path.",
             18  :       "Unable to obtain id for registering.",
             19  :       "Unknown registration method.",
             20  :       "Insufficient bad pixel masks set to combine.",

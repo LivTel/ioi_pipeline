@@ -10,7 +10,7 @@ import math
 import scipy
 import numpy as np
 import matplotlib
-import matplotlib.pyplot as plt
+import pylab as plt
 from scipy.optimize import curve_fit
 
 sys.path.append("../")
@@ -47,7 +47,7 @@ class measure_FWD:
         logger.addHandler(ch)
         
         # error handler
-        err = errors(logger)   
+        err = errors(logger) 
 
         # create res directory to store metadata
         if os.path.exists(self.params['workingDir']) is True:
@@ -69,6 +69,12 @@ class measure_FWD:
         ## add handlers to logging object
         logger.addHandler(fh)
         
+        ## process section argument
+        x1 = int(self.params['section'].split(',')[0])
+        y1 = int(self.params['section'].split(',')[1])
+        x2 = int(self.params['section'].split(',')[2])
+        y2 = int(self.params['section'].split(',')[3])        
+        
         # run pipeline
         self.params['pipeCfgPath'] = "config/pipeline_fwd.ini"
         pipe = run_pipe(self.params, logger, err)
@@ -86,7 +92,7 @@ class measure_FWD:
         data_mean   = []
         inttime     = []
         for idx, d in enumerate(data):
-            data_mean.append(np.mean(data[idx]))
+            data_mean.append(np.mean(data[idx][y1:y2,x1:x2]))
             inttime.append(hdr[idx]['INTTIME'])
     
         # plot
@@ -95,19 +101,26 @@ class measure_FWD:
                 'size'   : 12}
         matplotlib.rc('font', **font)
         
-        plt.plot(inttime, data_mean, 'k-')
-        plt.plot([0, max(inttime)], [np.min(data_mean) for i in [0, max(inttime)]], 'k--', label='Mean Bias = ' + str(np.min(data_mean)) + 'ADU')
-        plt.plot([0, max(inttime)], [np.max(data_mean) for i in [0, max(inttime)]], 'k:', label='Mean FWD = ' + str(np.max(data_mean)) + 'ADU') 
+        plt.plot(inttime, data_mean, 'kx-')
+        plt.plot([0, max(inttime)], [np.min(data_mean) for i in [0, max(inttime)]], 'k--', linewidth="3", label='Mean Bias = ' + str(np.min(data_mean)) + 'ADU')
+        plt.plot([0, max(inttime)], [np.max(data_mean) for i in [0, max(inttime)]], 'k--', label='Mean FWD = ' + str(np.max(data_mean)) + 'ADU') 
+        
+        if self.params['linLine']:
+            # linearity line
+            fitted_coeffs = np.polyfit([inttime[0], inttime[1]], [data_mean[0], data_mean[1]], 1)
+            plt.plot([0, inttime[-1]], np.polyval(fitted_coeffs, [0, inttime[-1]]), 'k:', label='Linearity')
             
         plt.title("FWD (" + str(gain) + "dB)")
         plt.xlabel("INTTIME (s)")
-        plt.ylabel("Mean counts")
+        plt.ylabel("Mean counts (ADU)")
         plt.xlim([0, max(inttime)])    
         plt.ylim([0,66000])
         plt.legend(loc='upper left', fontsize=11)
         
-        if self.params['fits']:     
-            plt.savefig("fwd.png")
+        plt.ticklabel_format(axis='y',style='sci',scilimits=(1,3))   
+        
+        if self.params['hard']: 
+            plt.savefig("fwd.png")        
         
         logger.info("Calculated FWD is " + str(np.max(data_mean) - np.min(data_mean)) + "ADU.")
 
@@ -121,7 +134,9 @@ if __name__ == "__main__":
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')      
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
     group1.add_option('--ghi', action='store', default=20, type=int, dest='maxGrpNum', help='highest group number to use')
-    group1.add_option('--hard', action='store_true', dest='fits', help='make plot?') 
+    group1.add_option('--hard', action='store_true', dest='hard', help='make hard plot?') 
+    group1.add_option('--s', action='store', dest='section', default='0,0,2047,2047', help='csv section of image to use [x1,y1,x2,y2]')
+    group1.add_option('--l', action='store_true', dest='linLine', help='add linearity line?')
     parser.add_option_group(group1)
     
     options, args = parser.parse_args()
@@ -139,8 +154,10 @@ if __name__ == "__main__":
         'minExpNum' : 1,
         'maxExpNum' : 1,        
         'logLevel' : str(options.logLevel.upper()),
-        'fits' : bool(options.fits),
-        'flip' : False
+        'hard' : bool(options.hard),
+        'flip' : False,
+        'section' : str(options.section),
+        'linLine' : bool(options.linLine)
     }
     
     m = measure_FWD(params)

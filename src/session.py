@@ -15,13 +15,13 @@ class session:
         self.file_hdr                   = None
         self.file_data_nonss            = None
         self.file_hdr_nonss             = None
-        self.file_opt_hdr_nonss         = None
+        self.file_opt_hdr_nonss         = [] # per ramp
         self.file_data_ss               = None
         self.file_hdr_ss                = None
-        self.file_opt_hdr_ss            = None
-        self.file_data_ss_stk           = None
-        self.file_hdr_ss_stk            = None
-        self.file_opt_hdr_ss_stk        = None
+        self.file_opt_hdr_ss            = [] # per ramp
+        self.file_data_stk              = None
+        self.file_hdr_stk               = None
+        self.file_opt_hdr_stk           = [] # per ramp
         self.file_ext                   = ''
         self.rates                      = None # cts/s
     
@@ -45,14 +45,14 @@ class session:
             self.logger.info("[session.add_amend_opt_header] Adding " + keyword + " keyword. New value is '(" + str(value) + ", " + comment + ")'")
         self.opt_hdr[keyword] = (value, comment)           
         
-    def set_opt_header_nonss(self):
-        self.file_opt_hdr_nonss = self.opt_hdr
+    def set_opt_header_this_run_nonss(self):
+        self.file_opt_hdr_nonss.append(collections.OrderedDict(self.opt_hdr))
         
-    def set_opt_header_ss(self):
-        self.file_opt_hdr_ss = self.opt_hdr   
+    def set_opt_header_this_run_ss(self):
+        self.file_opt_hdr_ss.append(collections.OrderedDict(self.opt_hdr)) 
         
-    def set_opt_header_ss_stk(self):
-        self.file_opt_hdr_ss_stk = self.opt_hdr   
+    def set_opt_header_this_run_stk(self):
+        self.file_opt_hdr_stk.append(collections.OrderedDict(self.opt_hdr))  
    
     def set_session_vars_post_combine(self, datas, hdrs, rates):
         self.file_data_nonss = copy.deepcopy(datas)
@@ -68,8 +68,8 @@ class session:
                 self.file_hdr_ss[idx_1].append([])
                 
     def set_session_vars_post_stacking(self, datas, hdrs):
-        self.file_data_ss_stk = copy.deepcopy(datas)
-        self.file_hdr_ss_stk  = copy.deepcopy(hdrs)   
+        self.file_data_stk = copy.deepcopy(datas)
+        self.file_hdr_stk  = copy.deepcopy(hdrs)   
                                    
     def write_combined_data_as_LT(self, workingDir, extname, allow_append=False):  
         if extname == "IM_NONSS":
@@ -85,6 +85,7 @@ class session:
         else:
             self.err.set_code(35, is_critical=True)
             
+        n_files = 0    
         for idx_1, run in enumerate(data):
             for idx_2, f in enumerate(run): 
                 file_sections = os.path.basename(self.start_names[idx_1][idx_2][0]).split('_')
@@ -92,21 +93,26 @@ class session:
                 if data[idx_1][idx_2] is None:
                     pass   
                 else:
-                    write_FITS_file(data=data[idx_1][idx_2], hdr=hdr[idx_1][idx_2], out=this_outPath, opt_hdr=self.opt_hdr, allow_append=allow_append)
+                    write_FITS_file(data=data[idx_1][idx_2], hdr=hdr[idx_1][idx_2], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
+                    n_files = n_files + 1
+        return n_files
                                  
     def write_stacked_data_as_LT(self, workingDir, extname, allow_append=False):
-        if extname == "SK_SS":  
-            data        = self.file_data_ss_stk
-            hdr         = self.file_hdr_ss_stk   
-            opt_hdr     = self.file_opt_hdr_ss_stk
+        if extname == "SK_SS" or extname == "SK_NONSS":  
+            data        = self.file_data_stk
+            hdr         = self.file_hdr_stk   
+            opt_hdr     = self.file_opt_hdr_stk
             self.opt_hdr['EXTNAME'] = extname
         else:
             self.err.set_code(36, is_critical=True)
-            
+
+        n_files = 0            
         for idx_1, run in enumerate(data):
             file_sections = os.path.basename(self.start_names[idx_1][0][0]).split('_')
             this_outPath = workingDir + '_'.join(file_sections[0:4]) + "_0_0_1.fits"
             if data[idx_1] is None:
                 pass
             else:
-                write_FITS_file(data=data[idx_1], hdr=hdr[idx_1], out=this_outPath, opt_hdr=self.opt_hdr, allow_append=allow_append)
+                write_FITS_file(data=data[idx_1], hdr=hdr[idx_1], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
+                n_files = n_files + 1 
+        return n_files

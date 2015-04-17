@@ -26,7 +26,7 @@ for idx, p in enumerate(paths):
         'fit' : [0,10000],
         'fitCoeff' : 1,
         'windowSize' : 50,
-        'fits' : False,
+        'hard' : False,
         'method' : "UTR",
         'calcGain': False,
         'calcRead': True,

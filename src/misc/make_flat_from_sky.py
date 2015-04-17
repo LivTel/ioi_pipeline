@@ -8,6 +8,7 @@ import os
 import numpy as np
 import scipy.stats as sps
 
+sys.path.append("/usr/local/bin/ioi_pipeline/src")
 sys.path.append("../")
 from utility import read_FITS_file, write_FITS_file
 
@@ -107,5 +108,4 @@ if __name__ == "__main__":
         try:
             write_FITS_file(out="flat_bad.fits", data=bad, hdr=None)
         except IOError:
-            logger.info("flat_bad.fits file already exists, and hasn't been clobbered")            
-        
+            logger.info("flat_bad.fits file already exists, and hasn't been clobbered") 

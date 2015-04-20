@@ -1,3 +1,4 @@
+import copy
 import pyfits 
 import os
 import numpy as np
@@ -31,7 +32,9 @@ class bad_pixel_mask:
             combined_mask_data = combined_mask_data * self.mask_data[i]
         return combined_mask_data
  
-    def execute(self, data, hdr, hard, out=None, opt_hdr={}):
+    def execute(self, in_data, in_hdr, hard, out=None, opt_hdr={}):
+        data = copy.deepcopy(in_data)
+        hdr  = copy.deepcopy(in_hdr)
         if data is None:
             self.err.set_code(12, is_critical=True)
         data, hdr = self._apply_bp_mask(data, hdr)

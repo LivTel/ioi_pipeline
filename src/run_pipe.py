@@ -49,7 +49,8 @@ class run_pipe():
             combination_method                  = str(pipe_cfg['frame_combination']['method'].upper())
             combination_f_pairs                 = int(pipe_cfg['frame_combination']['fowler_pairs'])
             combination_hard                    = bool(int(pipe_cfg['frame_combination']['hard'])) 
-            combination_quit                    = bool(int(pipe_cfg['frame_combination']['quit']))         
+            combination_quit                    = bool(int(pipe_cfg['frame_combination']['quit'])) 
+            combination_fowler_bodge            = float(pipe_cfg['frame_combination']['fowler_bodge'])
             ## nonlinearity_corrections
             do_nonlincor                        = bool(int(pipe_cfg['nonlinearity_corrections']['do']))       
             nonlincor_order                     = int(pipe_cfg['nonlinearity_corrections']['order'])
@@ -103,14 +104,14 @@ class run_pipe():
         # ---------------------------- 
         logger.info("[run_pipe.go] Searching for LT files in " + params['dataPath']) 
         try:
-            files, n = find_sort_files_LT(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minDithNum'], params['maxDithNum'], params['minExpNum'], params['maxExpNum'], params['date'], logger, err)
+            files, n, n_runs, n_dithers, n_exp = find_sort_files_LT(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minDithNum'], params['maxDithNum'], params['minExpNum'], params['maxExpNum'], params['date'], logger, err)
         except KeyError:        # this may happen if relevant LT input params haven't been set when instantiating, e.g. date.
             n = 0
         if n == 0:
             logger.info("[run_pipe.go] No LT files found in " + params['dataPath'] + "or relevant LT parameters haven't been set.") 
             logger.info("[run_pipe.go] Searching for Teledyne files in " + params['dataPath'])
             try:
-                files, n = find_sort_files_teledyne(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minGrpNum'], params['maxGrpNum'], params['minExpNum'], params['maxExpNum'], logger, err)
+                files, n, n_runs, n_dithers, n_exp = find_sort_files_teledyne(params['dataPath'], params['minRunNum'], params['maxRunNum'], params['minGrpNum'], params['maxGrpNum'], params['minExpNum'], params['maxExpNum'], logger, err)
             except KeyError:    # this may happen if relevant Teledyne input params haven't been set when instantiating.
                 n = 0
             if n == 0:
@@ -123,8 +124,8 @@ class run_pipe():
             logger.info("[run_pipe.go] Assuming LT nomenclature.")  
             are_LT_files = True
             
-        self.session.add_files(files)
-    
+        self.session.start(files)
+
         # -------------------------------   
         # ---- reference subtraction ----   
         # -------------------------------      
@@ -138,11 +139,11 @@ class run_pipe():
                     for idx_3, f in enumerate(dither):
                         logger.info("[run_pipe.go] Removing reference from run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']) + ", exp:" + str(idx_3+params['minExpNum']))
                         this_outPath = params['workingDir'] + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + "_" + str(idx_3+params['minExpNum']) + self.session.file_ext + ".fits"
-                        rtn_data, rtn_hdr = sub.execute(method=refsub_method, data=self.session.file_data[idx_1][idx_2][idx_3], hdr=self.session.file_hdr[idx_1][idx_2][idx_3], \
+                        rtn_data, rtn_hdr = sub.execute(method=refsub_method, in_data=self.session.file_data[idx_1][idx_2][idx_3], in_hdr=self.session.file_hdr[idx_1][idx_2][idx_3], \
                                                         hard=refsub_hard, strip=True, out=this_outPath, opt_hdr=self.session.opt_hdr) 
                         if rtn_data is not None and rtn_hdr is not None:
-                            self.session.file_data[idx_1][idx_2][idx_3] = rtn_data
-                            self.session.file_hdr[idx_1][idx_2][idx_3]  = rtn_hdr 
+                            self.session.file_data[idx_1][idx_2][idx_3]      = rtn_data
+                            self.session.file_hdr[idx_1][idx_2][idx_3]       = rtn_hdr
                         else:
                             err.set_code(6, is_critical=True)              
             if registration_quit:
@@ -161,9 +162,6 @@ class run_pipe():
             self.session.add_amend_opt_header('L1FMCOME', combination_method, 'frame combination method')
             self.session.add_amend_opt_header('L1FMCOPA', combination_f_pairs, 'num pairs used (fowler only)')
             comb = combine(logger, err)
-            file_data_post_combine     = []
-            file_hdr_post_combine      = []
-            rates                      = []
             
             # ----------------------------------------   
             # ---- set up nonlinearity correction ----   
@@ -192,29 +190,24 @@ class run_pipe():
                 self.session.add_amend_opt_header('L1LCOR', 0, 'linearity corrected')  
                 lcor = None
                 
-                
             for idx_1, run in enumerate(self.session.file_data):
-                file_data_post_combine.append([])
-                file_hdr_post_combine.append([])
-                rates.append([])
                 for idx_2, dither in enumerate(run): 
                     logger.info("[run_pipe.go] Combining files for run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
                     this_outPath_comb = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"   
-                    rtn_data, rtn_hdr, rtn_rates = comb.execute(method=combination_method, datas=self.session.file_data[idx_1][idx_2], hdrs=self.session.file_hdr[idx_1][idx_2], \
-                                                                hard=combination_hard, lcor=lcor, out=this_outPath_comb, f_pairs=combination_f_pairs, opt_hdr=self.session.opt_hdr) 
+                    rtn_data, rtn_hdr, rtn_rates = comb.execute(method=combination_method, in_datas=self.session.file_data[idx_1][idx_2], in_hdrs=self.session.file_hdr[idx_1][idx_2], \
+                                                                hard=combination_hard, lcor=lcor, out=this_outPath_comb, f_pairs=combination_f_pairs, opt_hdr=self.session.opt_hdr, \
+                                                                fowler_bodge = combination_fowler_bodge) 
                     if rtn_data is not None and rtn_hdr is not None and rtn_rates is not None: 
-                        file_data_post_combine[idx_1].append(rtn_data)
-                        file_hdr_post_combine[idx_1].append(rtn_hdr)
-                        rates[idx_1].append(rtn_rates)
+                        self.session.file_data_nonss[idx_1][idx_2]      = rtn_data
+                        self.session.file_hdr_nonss[idx_1][idx_2]       = rtn_hdr
+                        self.session.rates[idx_1][idx_2]                = rtn_rates
                     else:
-                        err.set_code(6, is_critical=True)
-                        
-            self.session.set_session_vars_post_combine(file_data_post_combine, file_hdr_post_combine, rates)          # this sets file_[data||hdr]_[ss||nonss] and rates vars.              
+                        err.set_code(6, is_critical=True)        
             
             if combination_quit:
                 logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
                 return err.current_code   
-                      
+              
             # -------------------------------   
             # -------- flatfielding ---------   
             # -------------------------------      
@@ -229,8 +222,8 @@ class run_pipe():
                   for idx_2, f in enumerate(run):
                       logger.info("[run_pipe.go] Applying flatfield correction to run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
                       this_outPath = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"
-                      rtn_data, rtn_hdr = ff.execute(data=self.session.file_data_nonss[idx_1][idx_2], hdr=self.session.file_hdr_nonss[idx_1][idx_2], hard=ff_hard, out=this_outPath, \
-                                                        opt_hdr=self.session.opt_hdr) 
+                      rtn_data, rtn_hdr = ff.execute(in_data=self.session.file_data_nonss[idx_1][idx_2], in_hdr=self.session.file_hdr_nonss[idx_1][idx_2], hard=ff_hard, out=this_outPath, \
+                                                     opt_hdr=self.session.opt_hdr) 
                       if rtn_data is not None and rtn_hdr is not None:
                           self.session.file_data_nonss[idx_1][idx_2] = rtn_data
                           self.session.file_hdr_nonss[idx_1][idx_2]  = rtn_hdr       
@@ -263,8 +256,8 @@ class run_pipe():
                     for idx_2, f in enumerate(run):         
                       logger.info("[run_pipe.go] Applying bad pixel mask to run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
                       this_outPath = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"
-                      rtn_data, rtn_hdr = bp.execute(data=self.session.file_data_nonss[idx_1][idx_2], hdr=self.session.file_hdr_nonss[idx_1][idx_2], \
-                                                      hard=bp_hard, out=this_outPath, opt_hdr=self.session.opt_hdr) 
+                      rtn_data, rtn_hdr = bp.execute(in_data=self.session.file_data_nonss[idx_1][idx_2], in_hdr=self.session.file_hdr_nonss[idx_1][idx_2], \
+                                                     hard=bp_hard, out=this_outPath, opt_hdr=self.session.opt_hdr) 
                       if rtn_data is not None and rtn_hdr is not None:
                           self.session.file_data_nonss[idx_1][idx_2] = rtn_data    
                           self.session.file_hdr_nonss[idx_1][idx_2]  = rtn_hdr
@@ -276,12 +269,15 @@ class run_pipe():
             else:
                 logger.info("[run_pipe.go] No bad pixel masking requested.") 
                 self.session.add_amend_opt_header('L1BADPX', 0, 'bad pixel mask applied')   
-            self.session.set_opt_header_this_run_nonss()  
+            self.session.file_opt_hdr_nonss.append(collections.OrderedDict(self.session.opt_hdr))
 
-
-            if are_LT_files:     # these processes only make sense in the context of LT files.     
-                data    = self.session.file_data_nonss     # pointer to allow for option of ss or nonss data in registration/stacking.
-                hdr     = self.session.file_hdr_nonss      # pointer to allow for option of ss or nonss data in registration/stacking.    
+            if are_LT_files:     # these processes only make sense in the context of LT files. 
+              
+                self.session.copy_data_hdr_nonss_to_ss()        # make a copy of nonss session vars to ss.
+                
+                data    = self.session.file_data_nonss          # pointer to allow for option of ss or nonss data in registration/stacking.
+                hdr     = self.session.file_hdr_nonss           # pointer to allow for option of ss or nonss data in registration/stacking. 
+                
                 # -----------------------------------   
                 # ---- sky subtraction (LT only) ----   
                 # -----------------------------------
@@ -303,7 +299,7 @@ class run_pipe():
                             ## make sky
                             logger.info("[run_pipe.go] Making sky frame.")
                             this_outPath = params['workingDir'] + "comb_sky_" + str(idx_1+params['minRunNum']) + ".fits"
-                            data_sky = ss.make_sky_frame(datas=self.session.file_data_nonss[idx_1], sigma=ss_bg_sigma_clip, hard=ss_hard, out=this_outPath)
+                            data_sky = ss.make_sky_frame(in_datas=self.session.file_data_nonss[idx_1], sigma=ss_bg_sigma_clip, hard=ss_hard, out=this_outPath)
                         
                             ## interpolate over bad pixels if bad pixel masking has been requested
                             if do_bp_masking:
@@ -314,19 +310,19 @@ class run_pipe():
                             for idx_2, f in enumerate(run):
                                 logger.info("[run_pipe.go] Subtracting sky from run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
                                 this_outPath = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"                   
-                                rtn_data, rtn_hdr = ss.sub_sky(data=self.session.file_data_nonss[idx_1][idx_2], hdr=self.session.file_hdr_nonss[idx_1][idx_2], \
-                                                              sigma=ss_bg_sigma_clip, hard=ss_hard, out=this_outPath, opt_hdr=self.session.opt_hdr)
+                                rtn_data, rtn_hdr = ss.sub_sky(in_data=self.session.file_data_nonss[idx_1][idx_2], in_hdr=self.session.file_hdr_nonss[idx_1][idx_2], \
+                                                               sigma=ss_bg_sigma_clip, hard=ss_hard, out=this_outPath, opt_hdr=self.session.opt_hdr)
                                 if rtn_data is not None and rtn_hdr is not None:
                                     self.session.file_data_ss[idx_1][idx_2] = rtn_data
                                     self.session.file_hdr_ss[idx_1][idx_2]  = rtn_hdr 
                                 else:
                                     err.set_code(6, is_critical=True)    
-                        self.session.set_opt_header_this_run_ss()  
+                        self.session.file_opt_hdr_ss.append(collections.OrderedDict(self.session.opt_hdr))  
                         if ss_quit: 
                             logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
                             return err.current_code        
-                    data = self.session.file_data_ss  
-                    hdr  = self.session.file_hdr_ss 
+                    data = self.session.file_data_ss            # ss has been applied, redirect pointer  
+                    hdr  = self.session.file_hdr_ss             # ss has been applied, redirect pointer
                 else:
                     logger.info("[run_pipe.go] No sky subtraction requested.")     
                     self.session.add_amend_opt_header('L1SKYSUB', 0, 'sky subtracted') 
@@ -357,26 +353,20 @@ class run_pipe():
                             rtn_datas, rtn_hdrs = reg.execute(registration_algorithm, params['workingDir'], fit_geom=registration_fit_geometry, bp_post_reg_thresh=bp_post_reg_thresh, \
                                                               hard=registration_hard, outs=this_outPaths, mask_outs=this_mask_outPaths)                   
                             if rtn_datas is not None and rtn_hdrs is not None:
-                                if do_SS:
-                                    self.session.file_data_ss[idx_1] = rtn_datas                
-                                    self.session.file_hdr_ss[idx_1]  = rtn_hdrs
-                                else:
-                                    self.session.file_data_nonss[idx_1] = rtn_datas                
-                                    self.session.file_hdr_nonss[idx_1]  = rtn_hdrs                                    
+                                    self.session.file_data_reg[idx_1] = rtn_datas            
+                                    self.session.file_hdr_reg[idx_1]  = rtn_hdrs                          
                             else:
                                 err.set_code(6, is_critical=True)                 
                         if registration_quit: 
                             logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
-                            return err.current_code
-
+                            return err.current_code    
+                          
                     # -------------------------------------  
                     # ---- SS image stacking (LT only) ----   
                     # ------------------------------------- 
                     if do_stacking:
                         logger.info("[run_pipe.go] Beginning stacking process.")
                         try:
-                            file_data_post_stacking = []
-                            file_hdr_post_stacking  = []
                             for idx_1, run in enumerate(data): 
                                 if len(run) == 1:
                                     logger.info("[run_pipe.go] Only one dither position found. Data will not be stacked.")
@@ -385,18 +375,17 @@ class run_pipe():
                                     self.session.add_amend_opt_header('L1STK', 1, 'stacked')
                                     stk = stack(logger, err)
                                     this_outPath = params['workingDir'] + "comb_stk_" + str(idx_1+params['minRunNum']) + ".fits"                    
-                                    rtn_data, rtn_hdr = stk.execute(datas=data[idx_1], hdrs=hdr[idx_1], \
-                                                                    hard=stacking_hard, method=stacking_method, out=this_outPath, opt_hdr=self.session.opt_hdr)  
+                                    rtn_data, rtn_hdr = stk.execute(in_datas=self.session.file_data_reg[idx_1], in_hdrs=self.session.file_hdr_reg[idx_1], \
+                                                                    hard=stacking_hard, method=stacking_method, out=this_outPath, opt_hdr=self.session.opt_hdr)                            
                                     if rtn_data is not None and rtn_hdr is not None:
-                                        file_data_post_stacking.append(rtn_data)
-                                        file_hdr_post_stacking.append(rtn_hdr)
+                                        self.session.file_data_stk[idx_1] = rtn_data
+                                        self.session.file_hdr_stk[idx_1]  = rtn_hdr
                                     else:
                                         err.set_code(6, is_critical=True)             
-                            self.session.set_opt_header_this_run_stk()    
+                            self.session.file_opt_hdr_stk.append(collections.OrderedDict(self.session.opt_hdr))  
                         except RuntimeError:
-                            err.set_code(13, is_critical=True)
-                                
-                        self.session.set_session_vars_post_stacking(file_data_post_stacking, file_hdr_post_stacking)          # this sets file_[data&&hdr]_stk vars.        
+                            err.set_code(13, is_critical=True)   
+
                     else:
                         logger.info("[run_pipe.go] No stacking requested.")  
                         self.session.add_amend_opt_header('L1STK', 0, 'stacked')  
@@ -408,7 +397,7 @@ class run_pipe():
         else:
             logger.info("[run_pipe.go] No frame combination requested.") 
             self.session.add_amend_opt_header('L1FMCO', 0, 'frame combined')
-            
+           
         # ----------------------  
         # ---- write output ----   
         # ----------------------  

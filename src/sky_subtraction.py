@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import scipy as sp
 import pyfits 
@@ -48,7 +49,8 @@ class sky_subtraction():
             write_FITS_file(out, self.data_sky, hdr=None)   
         return self.data_sky
            
-    def make_sky_frame(self, datas, sigma, hard, out):    
+    def make_sky_frame(self, in_datas, sigma, hard, out):   
+        datas = copy.deepcopy(in_datas)
         data_tmp = []
         ref_sky_2d = None
         for idx, data_2d in enumerate(datas):   # for each dither (==data_2d)
@@ -81,7 +83,9 @@ class sky_subtraction():
             write_FITS_file(out, self.data_sky, hdr=None)   
         return self.data_sky
         
-    def sub_sky(self, data, hdr, sigma, hard, out, opt_hdr={}):
+    def sub_sky(self, in_data, in_hdr, sigma, hard, out, opt_hdr={}):
+        data = copy.deepcopy(in_data)
+        hdr  = copy.deepcopy(in_hdr)
         if self.data_sky is None:
             self.err.set_code(14, is_critical=True) 
                

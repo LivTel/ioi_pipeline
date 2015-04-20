@@ -1,3 +1,4 @@
+import copy
 import os
 import pyfits
 import numpy as np
@@ -14,16 +15,18 @@ class combine():
         self.err        = err
         
     def _correct_nonlinearity(self, data, hdr, rates, lcor):
-        rtn_data, rtn_hdr = lcor.execute(data=data, hdr=hdr, rates=rates)
+        rtn_data, rtn_hdr = lcor.execute(in_data=data, in_hdr=hdr, rates=rates)
         if rtn_data is None or rtn_hdr is None:
             self.err.set_code(6, is_critical=True)  
         return rtn_data, rtn_hdr
                    
-    def execute(self, method, datas, hdrs, hard, lcor, out=None, f_pairs=1, opt_hdr={}):   
+    def execute(self, method, in_datas, in_hdrs, hard, lcor, out=None, f_pairs=1, opt_hdr={}, fowler_bodge=0):   
+        datas = copy.deepcopy(in_datas)
+        hdrs  = copy.deepcopy(in_hdrs)
         if method == "CDS":    
             data, hdr, rates = self._perform_CDS(datas, hdrs, lcor);  
         elif method == "FOWLER":
-            data, hdr, rates = self._perform_fowler(datas, hdrs, lcor, f_pairs); 
+            data, hdr, rates = self._perform_fowler(datas, hdrs, lcor, f_pairs, fowler_bodge); 
         else:
             self.err.set_code(10, is_critical=True) 
               
@@ -66,7 +69,7 @@ class combine():
         
         return this_CDS, hdr, rates
       
-    def _perform_fowler(self, datas, hdrs, lcor, f_pairs):
+    def _perform_fowler(self, datas, hdrs, lcor, f_pairs, fowler_bodge):
         if datas is None or len(datas) < 2*f_pairs:
             self.err.set_code(31, is_critical=True)
         
@@ -86,7 +89,7 @@ class combine():
             self.err.set_code(32, is_critical=True)                                 
         
         # calculate rates
-        delta = d_2_inttime = hdrs[1]['INTTIME'] - hdrs[0]['INTTIME']
+        delta = d_2_inttime = hdrs[1]['INTTIME'] - hdrs[0]['INTTIME']   # not subject to fowler_bodge as this is before the "exposure" part of the fowler sequence.
         d_1 = datas[0]                   
         d_2 = datas[1]   
         rates = (d_2 - d_1)/delta       # this returns cts/s
@@ -105,7 +108,7 @@ class combine():
                 this_pair_CDS, hdrs[g1_idx] = self._correct_nonlinearity(data=this_pair_CDS, hdr=hdrs[g1_idx], rates=rates, lcor=lcor)  
             datas_diff.append(this_pair_CDS)
             
-            exptimes.append(hdrs[g2_idx]['INTTIME'] - hdrs[g1_idx]['INTTIME']) 
+            exptimes.append(hdrs[g2_idx]['INTTIME'] - hdrs[g1_idx]['INTTIME'] + fowler_bodge)   # fowler_bodge is to account for the extra readtime that the IDL software puts in for exptimes > 1 read.
 
         # average pairs
         data = np.mean(datas_diff[0:f_pairs], axis=0) 

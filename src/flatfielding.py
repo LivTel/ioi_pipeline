@@ -1,3 +1,4 @@
+import copy
 import pyfits 
 import os
 import numpy as np
@@ -10,7 +11,9 @@ class flatfielding:
         self.err        = err
         self.coeffs     = None 
         
-    def execute(self, data, hdr, hard, out=None, opt_hdr={}):
+    def execute(self, in_data, in_hdr, hard, out=None, opt_hdr={}):
+        data = copy.deepcopy(in_data)
+        hdr  = copy.deepcopy(in_hdr)
         if data is None:
             self.err.set_code(12, is_critical=True)
         data, hdr = self._perform_correction(data, hdr)

@@ -99,39 +99,60 @@ def find_sort_files_LT(dataPath, minRunNum, maxRunNum, minDithNum, maxDithNum, m
     Looks for data conforming to LT nomenclature and returns a nested list with format [RUNNUM][DITHNUM].
     '''
     files_sorted = []
-    n_files = 0
+    
+    n_files     = 0
+    n_runs      = 0
+    i_dither    = 0     # counter
+    n_dithers   = []
+    i_exp       = 0     # counter
+    n_exps      = []
     for idx_1, runNum in enumerate(range(minRunNum, maxRunNum+1)):
+        n_runs = idx_1
         files_sorted.append([])
         for idx_2, dithNum in enumerate(range(minDithNum, maxDithNum+1)):
+            i_dithers = idx_2
+            n_exps.append([])
             logger.info("[full_sort_LT_UTR] Trying runNum=" + str(runNum) + " and dithNum=" + str(dithNum))
             files = find_LT_files(dataPath, runNum, dithNum, minExpNum, maxExpNum, date, logger, errors)
             if len(files) != 0:
                 files_sorted[idx_1].append(sort_files_by_FITS_key(files, "INTTIME", logger, errors))
                 n_files = n_files + len(files)
+                i_exp = len(files)
+            n_exps[idx_2].append(i_exp)
+            i_exp = 0
+        n_dithers.append(i_dithers)
                 
     if n_files == 0:
         errors.set_code(3, is_critical=False)
-        
-    return files_sorted, n_files
+    return files_sorted, n_files, n_runs, n_dithers, n_exps
   
 def find_sort_files_teledyne(dataPath, minRunNum, maxRunNum, minGrpNum, maxGrpNum, minExpNum, maxExpNum, logger, errors):
     ''' 
     Looks for data conforming to Teledyne nomenclature and returns data as a nested list with format [RUNNUM][0].
     '''
     files_sorted = []
-    n_files = 0
+    
+    n_files     = 0
+    n_runs      = 0
+    i_dither    = 0          # counter
+    n_dithers   = []
+    i_exp       = 0          # counter
+    n_exps      = []
     for idx_1, runNum in enumerate(range(minRunNum, maxRunNum+1)):
+        n_runs = idx_1
         files_sorted.append([])
         logger.info("[full_sort_teledyne_UTR] Trying runNum=" + str(runNum))
         files = find_teledyne_files(dataPath, runNum, minGrpNum, maxGrpNum, minExpNum, maxExpNum, logger, errors)
         if len(files) != 0:
             files_sorted[idx_1].append(sort_files_by_FITS_key(files, "INTTIME", logger, errors))
             n_files = n_files + len(files)
-
-    if n_files == 0:
-        errors.set_code(3, is_critical=False)
+            i_exp = len(files)
+        n_exps.append(i_exp)  
+        i_exp = 0
         
-    return files_sorted, n_files
+    if n_files == 0:
+        errors.set_code(3, is_critical=False)   
+    return files_sorted, n_files, n_runs, n_dithers, n_exps
   
 def read_FITS_file(f, hdu=0):
     f_fits = read(f)

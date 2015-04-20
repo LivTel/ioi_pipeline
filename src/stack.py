@@ -1,3 +1,4 @@
+import copy
 import numpy as np
 import scipy as sp
 import pyfits
@@ -51,7 +52,9 @@ class stack():
         hdr['NCOADDS'] = (nframes, "Number of coadded frames")
         return hdr      
         
-    def execute(self, datas, hdrs, hard, method, out=None, opt_hdr={}):
+    def execute(self, in_datas, in_hdrs, hard, method, out=None, opt_hdr={}):
+        datas = copy.deepcopy(in_datas)
+        hdrs  = copy.deepcopy(in_hdrs)
         if method == "MEAN":
             data, hdr = self._mean(datas, hdrs)
             self._add_gain_keywords(hdr)

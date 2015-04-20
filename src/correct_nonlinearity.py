@@ -1,3 +1,4 @@
+import copy
 import os
 import numpy as np
 import pyfits
@@ -30,7 +31,9 @@ class nonlinearity_correction:
             data_cor = data * correction_factors
             return data_cor, hdr
 
-    def execute(self, data, hdr, rates):
+    def execute(self, in_data, in_hdr, rates):
+        data = copy.deepcopy(in_data)
+        hdr  = copy.deepcopy(in_hdr)
         if data is None:
             self.err.set_code(12, is_critical=True)     
         data, hdr = self._evaluate_correction(data, hdr, rates) 

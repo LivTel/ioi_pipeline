@@ -10,32 +10,54 @@ class session:
         self.logger                     = logger
         self.err                        = err
         self.start_names                = None
-        self.opt_hdr                    = collections.OrderedDict()
-        self.file_data                  = None
-        self.file_hdr                   = None
-        self.file_data_nonss            = None
-        self.file_hdr_nonss             = None
-        self.file_opt_hdr_nonss         = [] # per ramp
-        self.file_data_ss               = None
-        self.file_hdr_ss                = None
-        self.file_opt_hdr_ss            = [] # per ramp
-        self.file_data_stk              = None
-        self.file_hdr_stk               = None
-        self.file_opt_hdr_stk           = [] # per ramp
         self.file_ext                   = ''
-        self.rates                      = None # cts/s
+        self.opt_hdr                    = collections.OrderedDict()
+        
+        self.file_data                  = []
+        self.file_hdr                   = []
+        
+        self.rates                      = []    # cts/s
+        
+        self.file_data_nonss            = []
+        self.file_hdr_nonss             = []
+        self.file_opt_hdr_nonss         = []    # per ramp
+        
+        self.file_data_ss               = None  # this is deepcopied
+        self.file_hdr_ss                = None  # this is deepcopied
+        self.file_opt_hdr_ss            = []    # per ramp
+        
+        self.file_data_reg              = []
+        self.file_hdr_reg               = []
+        self.file_opt_hdr_reg           = []    # per ramp        
+        
+        self.file_data_stk              = []
+        self.file_hdr_stk               = []
+        self.file_opt_hdr_stk           = []    # per ramp
     
-    def add_files(self, files):
-        self.file_data   = copy.deepcopy(files)
-        self.file_hdr    = copy.deepcopy(files)
-        self.start_names = copy.deepcopy(files)        
-        for idx_1, run in enumerate(files):          
-            for idx_2, dither in enumerate(run):          
+    def start(self, files):
+        self.start_names = copy.deepcopy(files)  
+        for idx_1, run in enumerate(files):  
+            self.file_data.append([])
+            self.file_hdr.append([])      
+            self.file_data_nonss.append([])
+            self.file_hdr_nonss.append([])  
+            self.rates.append([])
+            self.file_data_reg.append([])
+            self.file_hdr_reg.append([])  
+            self.file_data_stk.append([])
+            self.file_hdr_stk.append([])              
+            for idx_2, dither in enumerate(run):  
+                self.file_data[idx_1].append([])
+                self.file_hdr[idx_1].append([])
+                self.file_data_nonss[idx_1].append([])
+                self.file_hdr_nonss[idx_1].append([])  
+                self.rates[idx_1].append([])
+                self.file_data_reg[idx_1].append([])
+                self.file_hdr_reg[idx_1].append([])  
                 for idx_3, f in enumerate(dither):
-                    self.start_names[idx_1][idx_2][idx_3] = f
-                    data, hdr = read_FITS_file(f) 
-                    self.file_data[idx_1][idx_2][idx_3] = data
-                    self.file_hdr[idx_1][idx_2][idx_3]  = hdr   
+                    data, hdr = read_FITS_file(f)                   
+                    self.file_data[idx_1][idx_2].append(data)
+                    self.file_hdr[idx_1][idx_2].append(hdr)  
                     self.logger.info("[session.read_files] Added file " + f + " to this session.")
                     
     def add_amend_opt_header(self, keyword, value, comment=''):
@@ -44,32 +66,10 @@ class session:
         else:
             self.logger.info("[session.add_amend_opt_header] Adding " + keyword + " keyword. New value is '(" + str(value) + ", " + comment + ")'")
         self.opt_hdr[keyword] = (value, comment)           
-        
-    def set_opt_header_this_run_nonss(self):
-        self.file_opt_hdr_nonss.append(collections.OrderedDict(self.opt_hdr))
-        
-    def set_opt_header_this_run_ss(self):
-        self.file_opt_hdr_ss.append(collections.OrderedDict(self.opt_hdr)) 
-        
-    def set_opt_header_this_run_stk(self):
-        self.file_opt_hdr_stk.append(collections.OrderedDict(self.opt_hdr))  
-   
-    def set_session_vars_post_combine(self, datas, hdrs, rates):
-        self.file_data_nonss = copy.deepcopy(datas)
-        self.file_hdr_nonss  = copy.deepcopy(hdrs)
-        self.file_data_ss    = []          
-        self.file_hdr_ss     = []  
-        self.rates                = rates
-        for idx_1, run in enumerate(datas):
-            self.file_data_ss.append([])
-            self.file_hdr_ss.append([])
-            for idx_2, dither in enumerate(run):
-                self.file_data_ss[idx_1].append([])
-                self.file_hdr_ss[idx_1].append([])
-                
-    def set_session_vars_post_stacking(self, datas, hdrs):
-        self.file_data_stk = copy.deepcopy(datas)
-        self.file_hdr_stk  = copy.deepcopy(hdrs)   
+               
+    def copy_data_hdr_nonss_to_ss(self):
+        self.file_data_ss = copy.deepcopy(self.file_data_nonss)
+        self.file_hdr_ss  = copy.deepcopy(self.file_hdr_nonss)
                                    
     def write_combined_data_as_LT(self, workingDir, extname, allow_append=False):  
         if extname == "IM_NONSS":
@@ -87,16 +87,17 @@ class session:
         else:
             self.err.set_code(35, is_critical=True)
             
-        n_files = 0    
-        for idx_1, run in enumerate(data):
-            for idx_2, f in enumerate(run): 
-                file_sections = os.path.basename(self.start_names[idx_1][idx_2][0]).split('_')
-                this_outPath = workingDir + '_'.join(file_sections[0:5]) + "_0_1.fits"
-                if data[idx_1][idx_2] is None:
-                    pass   
-                else:
-                    write_FITS_file(data=data[idx_1][idx_2], hdr=hdr[idx_1][idx_2], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
-                    n_files = n_files + 1
+        n_files = 0  
+        if data is not None:
+            for idx_1, run in enumerate(data):
+                for idx_2, f in enumerate(run): 
+                    file_sections = os.path.basename(self.start_names[idx_1][idx_2][0]).split('_')
+                    this_outPath = workingDir + '_'.join(file_sections[0:5]) + "_0_1.fits"
+                    if data[idx_1][idx_2] is None:
+                        pass   
+                    else:
+                        write_FITS_file(data=data[idx_1][idx_2], hdr=hdr[idx_1][idx_2], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
+                        n_files = n_files + 1
         return n_files
                                  
     def write_stacked_data_as_LT(self, workingDir, extname, allow_append=False):
@@ -108,14 +109,15 @@ class session:
                 opt_hdr[idx]['EXTNAME'] = extname
         else:
             self.err.set_code(36, is_critical=True)
-
-        n_files = 0            
-        for idx_1, run in enumerate(data):
-            file_sections = os.path.basename(self.start_names[idx_1][0][0]).split('_')
-            this_outPath = workingDir + '_'.join(file_sections[0:4]) + "_0_0_1.fits"
-            if data[idx_1] is None:
-                pass
-            else:
-                write_FITS_file(data=data[idx_1], hdr=hdr[idx_1], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
-                n_files = n_files + 1 
+            
+        n_files = 0    
+        if data is not None:
+            for idx_1, run in enumerate(data):
+                file_sections = os.path.basename(self.start_names[idx_1][0][0]).split('_')
+                this_outPath = workingDir + '_'.join(file_sections[0:4]) + "_0_0_1.fits"
+                if data[idx_1] is None:
+                    pass
+                else:
+                    write_FITS_file(data=data[idx_1], hdr=hdr[idx_1], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
+                    n_files = n_files + 1 
         return n_files

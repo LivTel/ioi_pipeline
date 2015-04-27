@@ -219,18 +219,18 @@ class measure_gain_RN:
             popt, pcov = curve_fit(gauss,[bins[i]+((bins[i+1]-bins[i])/2) for i in range(len(bins)-1)],n,p0=[1,rn_median,np.nanstd(RN)])                 # gauss fit
                 
             plt.title("Read Noise (" + str(gain) + "dB)")
-            plt.xlabel("RN (e-)")
+            plt.xlabel("CDS RN (e-)")
             plt.ylabel("Number")
                 
             #plt.plot(np.arange(lim[0],lim[1],bin_width),gauss(np.arange(lim[0],lim[1],bin_width),*popt),'r-', linewidth=2, label='fit')
-            plt.plot([popt[1] for i in range(0, int(np.ceil(max(n)))+y_pad)], range(0, int(np.ceil(max(n)))+y_pad), 'k--', linewidth=1, label='RN = ' + str(sf(popt[1], 3)) + 'e-')
+            plt.plot([popt[1] for i in range(0, int(np.ceil(max(n)))+y_pad)], range(0, int(np.ceil(max(n)))+y_pad), 'k--', linewidth=1, label='CDS RN = ' + str(sf(popt[1], 3)) + 'e-')
             plt.xlim(lim)
             plt.ylim([0, np.ceil(max(n) + y_pad)])
             plt.legend(loc='upper left', fontsize=10)
             if self.params['fits']:
-                plt.savefig("rn.png")   
+                plt.savefig("rn.eps")   
 
-            logger.info("Calculated RN is " + str(sf(popt[1], 3)) + "e-.")            
+            logger.info("Calculated CDS RN is " + str(sf(popt[1], 3)) + "e-.")            
               
         # plot GAIN    
         ## set up some GAIN histogram attributes
@@ -256,7 +256,7 @@ class measure_gain_RN:
             plt.legend(loc='upper left', fontsize=10)
             
             if self.params['hard']:
-                plt.savefig("gain.png")   
+                plt.savefig("gain.eps")   
             
             logger.info("Calculated gain is " + str(sf(popt[1], 3)) + "e-/ADU.")    
             

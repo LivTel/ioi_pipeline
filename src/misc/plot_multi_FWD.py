@@ -3,14 +3,14 @@ import pylab as plt
 from measure_FWD import measure_FWD as mfwd
 from measure_linearity import measure_linearity as mlin
 
-paths = ["/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/22/"#,
-         #"/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/14/",
-         #"/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/15/",
-         #"/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/21/"
+paths = ["/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/22/",
+         "/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/14/",
+         "/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/15/",
+         "/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/21/"
         ]
 
-ghis = [25,40,34,30]
-ghis = [60]
+ghis = [31,40,32,29]
+#ghis = [5]
 for idx, p in enumerate(paths):
     # parameters are shared between measure_FWD and measure_linearity.
     params = {                  
@@ -64,6 +64,6 @@ for idx, p in enumerate(paths):
     m.go()    
     plt.title('')  
     if idx == 0 or idx < len(paths)-1:
-        plt.xlabel('')    
-    
+        plt.xlabel('')   
+            
 plt.show()

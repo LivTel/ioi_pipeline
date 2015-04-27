@@ -44,7 +44,8 @@ class errors():
             34  :       "Value of ASICGAIN gives an unmapped GAIN/EPERDN, ignoring.",
             35  :       "EXTNAME is not valid, expecting either IM_NONSS or IM_SS.",
             36  :       "EXTNAME is not valid, expecting SK_SS.",
-            37  :       "Frames not taken with enhanced horizontal clocking. Linearity correction may not be optimal."
+            37  :       "Frames not taken with enhanced horizontal clocking. Linearity correction may not be optimal.",
+            38  :       "Unknown algorithm to make sky."
         }
         
     def set_code(self, code, is_warning=False, is_critical=False):

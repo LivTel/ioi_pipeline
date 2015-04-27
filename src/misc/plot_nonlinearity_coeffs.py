@@ -48,10 +48,10 @@ for idx, ext in enumerate(fits):
     plt.setp(patches, 'facecolor', 'w', 'alpha', 1)
     plt.ticklabel_format(axis='x', style='sci', scilimits=lim[idx])
     plt.xlim(lim[idx])
-    plt.title("Distribution of coefficients for order " + str(idx))
+    plt.title("Order " + str(idx))
     plt.xlabel("Value")
     plt.ylabel("Number")
-    plt.legend(loc="upper right", fontsize=10)
-    plt.tight_layout()
+    plt.legend(loc="lower right", fontsize=10)
     
+plt.tight_layout()
 plt.show()

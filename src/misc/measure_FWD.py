@@ -102,8 +102,8 @@ class measure_FWD:
         matplotlib.rc('font', **font)
         
         plt.plot(inttime, data_mean, 'kx-')
-        plt.plot([0, max(inttime)], [np.min(data_mean) for i in [0, max(inttime)]], 'k--', linewidth="3", label='Mean Bias = ' + str(np.min(data_mean)) + 'ADU')
-        plt.plot([0, max(inttime)], [np.max(data_mean) for i in [0, max(inttime)]], 'k--', label='Mean FWD = ' + str(np.max(data_mean)) + 'ADU') 
+        plt.plot([0, max(inttime)], [np.min(data_mean) for i in [0, max(inttime)]], 'k--', linewidth=3, label='Mean Bias = ' + str(np.min(data_mean)) + 'ADU')
+        plt.plot([0, max(inttime)], [np.max(data_mean) for i in [0, max(inttime)]], 'k--', label='Mean Sat. = ' + str(np.max(data_mean)) + 'ADU') 
         
         if self.params['linLine']:
             # linearity line
@@ -111,16 +111,16 @@ class measure_FWD:
             plt.plot([0, inttime[-1]], np.polyval(fitted_coeffs, [0, inttime[-1]]), 'k:', label='Linearity')
             
         plt.title("FWD (" + str(gain) + "dB)")
-        plt.xlabel("INTTIME (s)")
+        plt.xlabel("EXPTIME (s)")
         plt.ylabel("Mean counts (ADU)")
         plt.xlim([0, max(inttime)])    
         plt.ylim([0,66000])
-        plt.legend(loc='upper left', fontsize=11)
+        plt.legend(loc='lower right', fontsize=11)
         
         plt.ticklabel_format(axis='y',style='sci',scilimits=(1,3))   
         
         if self.params['hard']: 
-            plt.savefig("fwd.png")        
+            plt.savefig("fwd.eps")        
         
         logger.info("Calculated FWD is " + str(np.max(data_mean) - np.min(data_mean)) + "ADU.")
 

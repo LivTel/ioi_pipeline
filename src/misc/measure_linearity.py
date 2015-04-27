@@ -104,10 +104,11 @@ class measure_linearity:
                 data_mean_lin.append(np.nanmean(data[y1:y2,x1:x2]+missing_flux[y1:y2,x1:x2]))
                 
         # linearity line
-        fitted_coeffs = np.polyfit([exptime_nolin[0], exptime_nolin[1]], [data_mean_nolin[0], data_mean_nolin[1]], 1)
-        plt.plot([0, exptime_nolin[-1]], np.polyval(fitted_coeffs, [0, exptime_nolin[-1]]), 'k:', label='Linear fit')                
+        fitted_coeffs = np.polyfit([exptime_nolin[0], exptime_nolin[1]], [data_mean_nolin[0], data_mean_nolin[1]], 1)         
         
         if self.params['p1']:
+            plt.clf()
+            plt.plot([0, exptime_nolin[-1]], np.polyval(fitted_coeffs, [0, exptime_nolin[-1]]), 'k:', label='Linear fit')       
             plt.plot(exptime_nolin, data_mean_nolin, 'kx-', label="No linearity correction")
             if self.params['doLinearity']:
                 plt.plot(exptime_lin, data_mean_lin, 'ko--', label="With linearity correction")
@@ -116,44 +117,45 @@ class measure_linearity:
             plt.title("Flux v EXPTIME")
             plt.xlabel("EXPTIME (s)")
             plt.ylabel("CDS mean counts (ADU)")
-            plt.legend(loc='upper left', fontsize=10)
+            plt.legend(loc='lower right', fontsize=10)
             plt.ticklabel_format(style='sci', axis='y', scilimits=(0,66000))
               
             plt.ticklabel_format(axis='y',style='sci',scilimits=(1,3))           
             
             if self.params['hard']: 
-                plt.savefig("linearity1.png")
+                plt.savefig("linearity1.eps")
                 
-        if self.params['p2']:                
+        if self.params['p2']:    
+            plt.clf()
             plt.plot(data_mean_nolin, (abs(np.polyval(fitted_coeffs, exptime_nolin)-data_mean_nolin)/np.polyval(fitted_coeffs, exptime_nolin))*100, 'kx-', label='Nonlinearity % (uncorrected)') 
             if self.params['doLinearity']:
                 plt.plot(data_mean_lin, (abs(np.polyval(fitted_coeffs, exptime_lin)-data_mean_lin)/np.polyval(fitted_coeffs, exptime_lin))*100, 'ko--', label='Residual nonlinearity % (corrected)')   
             
             # 5% RESIDUAL nonlinearity line
-            plt.plot(data_mean_nolin, [5 for i in range(len(data_mean_nolin))] , 'k--', linewidth=2, label="5% nonlinearity")   
+            plt.plot([0, 70000], [5, 5] , 'k--', label="5% nonlinearity")   
             
             plt.title("Nonlinearity")
             plt.xlabel("CDS mean counts (ADU)")
             plt.ylabel("Nonlinearity %")
-            plt.legend(loc='upper left', fontsize=10)
+            plt.legend(loc='lower right', fontsize=10)
             plt.yscale('log')
             plt.ylim([0.1,10])
             
             if self.params['hard']: 
-                plt.savefig("linearity2.png")        
+                plt.savefig("linearity2.eps")        
         
 if __name__ == "__main__":
     np.seterr(all='raise')
     
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/15/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/19/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')    
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')      
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
-    group1.add_option('--ghi', action='store', default=10, type=int, dest='maxGrpNum', help='highest group number to use ')
+    group1.add_option('--ghi', action='store', default=32, type=int, dest='maxGrpNum', help='highest group number to use ')
     group1.add_option('--cor', action='store_true', dest='doLinearity', help='compute corrections?')
     group1.add_option('--s', action='store', dest='section', default='0,0,2047,2047', help='csv section of image to use [x1,y1,x2,y2]')    
     group1.add_option('--p1', action='store_true', dest='p1', help='make plot of exptime v counts?')    

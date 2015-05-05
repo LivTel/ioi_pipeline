@@ -72,8 +72,9 @@ class run_pipe():
             do_SS                               = bool(int(pipe_cfg['sky_subtraction']['do']))
             ss_smoothing_box_size               = int(pipe_cfg['sky_subtraction']['smoothing_box_size'])
             ss_bg_sigma_clip                    = float(pipe_cfg['sky_subtraction']['bg_sigma_clip'])
-            ss_min_n_dithers_req_peers_only     = int(pipe_cfg['sky_subtraction']['min_n_dithers_req_peers_only'])
+            ss_peers_only                       = bool(int(pipe_cfg['sky_subtraction']['peers_only']))
             ss_make_algorithm                   = str(pipe_cfg['sky_subtraction']['make_algorithm'])
+            ss_max_iterations                   = int(pipe_cfg['sky_subtraction']['max_iterations'])
             ss_hard                             = bool(int(pipe_cfg['sky_subtraction']['hard']))
             ss_quit                             = bool(int(pipe_cfg['sky_subtraction']['quit'])) 
             ## registration
@@ -295,27 +296,17 @@ class run_pipe():
                         else:  
                             logger.info("[run_pipe.go] Run:" + str(idx_1+params['minRunNum']))
                             self.session.add_amend_opt_header('L1SKYSUB', 1, 'sky subtracted')
-                            self.session.file_ext = self.session.file_ext + ".ss"
-                            peers_only = len(run) >= ss_min_n_dithers_req_peers_only        # do we perform peers only sky subtraction?
-                            if peers_only:
-                                logger.info("[run_pipe.go] Subtraction will use peers only.") 
-                            else:
-                                logger.info("[run_pipe.go] Subtraction will include all frames.")
-                                
+                            self.session.file_ext = self.session.file_ext + ".ss"  
                             for idx_2, f in enumerate(run):
                                 logger.info("[run_pipe.go] Subtracting sky from run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
                                 this_outPath = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"  
                                 
                                 ss = sky_subtraction(logger, err)
-                                ### make sky. 
-                                ### 
-                                ### if len(run) <= [ss_min_n_dithers_req_exclude] the sky is constructed from all but the 
-                                ### frame that is currently being considered. This avoids contamination from stellar residuals.
-                                ###
                                 logger.info("[run_pipe.go] Constructing sky frame.")
                                 this_outPath = params['workingDir'] + "comb_sky_" + str(idx_1+params['minRunNum']) + '_' + str(idx_2+params['minDithNum']) + ".fits"
                                 data_sky = ss.make_sky_frame(in_datas=self.session.file_data_nonss[idx_1], idx_of_current_frame=idx_2, sigma=ss_bg_sigma_clip, interpolate_bad=do_bp_masking, \
-                                                             smoothing_box_size=ss_smoothing_box_size, make_algorithm=ss_make_algorithm, peers_only=peers_only, hard=ss_hard, out=this_outPath)                         
+                                                             smoothing_box_size=ss_smoothing_box_size, make_algorithm=ss_make_algorithm, max_iter=ss_max_iterations, peers_only=ss_peers_only, \
+                                                             hard=ss_hard, out=this_outPath)                         
                                 logger.info("[run_pipe.go] Subtracting sky frame.")      
                                 ### subtract sky
                                 rtn_data, rtn_hdr = ss.sub_sky(in_data=self.session.file_data_nonss[idx_1][idx_2], in_hdr=self.session.file_hdr_nonss[idx_1][idx_2], \

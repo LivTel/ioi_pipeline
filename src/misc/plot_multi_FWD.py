@@ -10,7 +10,6 @@ paths = ["/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/22/",
         ]
 
 ghis = [31,40,32,29]
-#ghis = [5]
 for idx, p in enumerate(paths):
     # parameters are shared between measure_FWD and measure_linearity.
     params = {                  
@@ -45,7 +44,7 @@ for idx, p in enumerate(paths):
         plt.xlabel('')
     if idx == 0 or idx < len(paths)-1:
         plt.xlabel('')
-        
+     
     # make exptime v counts plot (CDS)
     plt.subplot(4,3,(idx*3)+2)
     m = mlin(params)
@@ -55,7 +54,7 @@ for idx, p in enumerate(paths):
         plt.xlabel('')    
     if idx == 0 or idx < len(paths)-1:
         plt.xlabel('')
-        
+       
     # make exptime v linearity plot   
     params['p1'] = False
     params['p2'] = True
@@ -64,6 +63,6 @@ for idx, p in enumerate(paths):
     m.go()    
     plt.title('')  
     if idx == 0 or idx < len(paths)-1:
-        plt.xlabel('')   
-            
+        plt.xlabel('') 
+        
 plt.show()

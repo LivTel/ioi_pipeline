@@ -1,32 +1,16 @@
 import numpy as np
+import statsmodels.api as sm
 
-def tukey_biweight(data, axis=None):
-    data = np.array(data, copy=False)
-    median = np.median(data, axis=axis)
-    if axis is not None:
-        delta = data - np.expand_dims(median, axis=axis)
-    else:
-        delta = data - median
-    d = np.median(np.abs(delta), axis=axis)
-    if axis is not None:
-        indices = d == 0
-        d[indices] = 1  # dummy value
-        if np.all(indices):
-            return median
-        if axis is not None:
-            d = np.expand_dims(d, axis=axis)
-        weight = 1 - (delta / (6*d))**2
-    else:
-        if d == 0:
-            return median
-        weight = 1 - (delta / (6*d))**2
-    weight = np.maximum(0, weight)
-    weight = weight * weight
-    if axis is not None:
-        c = np.empty(indices.shape)
-        c[indices] = median[indices]
-        c[~indices] = (median + np.nansum(weight * delta) /
-                       np.nansum(weight))[~indices]
-    else:
-        c = median + np.nansum(weight * delta) / np.nansum(weight)
-    return c
+def tukey_biweight(in_datas, scale, axis=0, max_iter=100, logger=None):
+    # the robust estimator should be able to cope with the outliers from converting nans to num.
+    location, solved = sm.robust.scale.norms.estimate_location(np.nan_to_num(in_datas), scale, norm=sm.robust.norms.TukeyBiweight(), maxiter=max_iter, axis=0, logger=logger) 
+    if not np.all(solved):
+        return None 
+    return location
+    
+def huberT(in_datas, scale, axis=0, max_iter=100, logger=None):
+    # the robust estimator should be able to cope with the outliers from converting nans to num.
+    location, solved = sm.robust.scale.norms.estimate_location(np.nan_to_num(in_datas), scale, maxiter=max_iter, axis=0, logger=logger)
+    if not np.all(solved):
+        return None
+    return location

@@ -107,7 +107,7 @@ class measure_linearity:
         fitted_coeffs = np.polyfit([exptime_nolin[0], exptime_nolin[1]], [data_mean_nolin[0], data_mean_nolin[1]], 1)         
         
         if self.params['p1']:
-            plt.clf()
+            #plt.clf()
             plt.plot([0, exptime_nolin[-1]], np.polyval(fitted_coeffs, [0, exptime_nolin[-1]]), 'k:', label='Linear fit')       
             plt.plot(exptime_nolin, data_mean_nolin, 'kx-', label="No linearity correction")
             if self.params['doLinearity']:
@@ -126,7 +126,7 @@ class measure_linearity:
                 plt.savefig("linearity1.eps")
                 
         if self.params['p2']:    
-            plt.clf()
+            #plt.clf()
             plt.plot(data_mean_nolin, (abs(np.polyval(fitted_coeffs, exptime_nolin)-data_mean_nolin)/np.polyval(fitted_coeffs, exptime_nolin))*100, 'kx-', label='Nonlinearity % (uncorrected)') 
             if self.params['doLinearity']:
                 plt.plot(data_mean_lin, (abs(np.polyval(fitted_coeffs, exptime_lin)-data_mean_lin)/np.polyval(fitted_coeffs, exptime_lin))*100, 'ko--', label='Residual nonlinearity % (corrected)')   
@@ -134,7 +134,7 @@ class measure_linearity:
             # 5% RESIDUAL nonlinearity line
             plt.plot([0, 70000], [5, 5] , 'k--', label="5% nonlinearity")   
             
-            plt.title("Nonlinearity")
+            plt.title("Residual Nonlinearity")
             plt.xlabel("CDS mean counts (ADU)")
             plt.ylabel("Nonlinearity %")
             plt.legend(loc='lower right', fontsize=10)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/19/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/14/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')    
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use')
     group1.add_option('--ghi', action='store', default=32, type=int, dest='maxGrpNum', help='highest group number to use ')
     group1.add_option('--cor', action='store_true', dest='doLinearity', help='compute corrections?')
-    group1.add_option('--s', action='store', dest='section', default='0,0,2047,2047', help='csv section of image to use [x1,y1,x2,y2]')    
+    group1.add_option('--s', action='store', dest='section', default='287,1600,703,1803', help='csv section of image to use [x1,y1,x2,y2]')    
     group1.add_option('--p1', action='store_true', dest='p1', help='make plot of exptime v counts?')    
     group1.add_option('--p2', action='store_true', dest='p2', help='make plot of counts v linearity?') 
     group1.add_option('--hard', action='store_true', dest='hard', help='make hard plot?')

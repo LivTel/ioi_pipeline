@@ -191,6 +191,10 @@ class measure_gain_RN:
                 fitted_coeffs = np.polyfit(means_average[idx_lo:idx_hi], vars_diff[idx_lo:idx_hi], self.params['fitCoeff'])
                 fitted_total_noise = np.polyval(fitted_coeffs, means_average) 
 
+                '''plt.plot(means_average, fitted_total_noise)
+                plt.plot(means_average[idx_lo:idx_hi], vars_diff[idx_lo:idx_hi], 'ko')
+                plt.show()'''
+                
                 try: 
                     calc_gain           = 1./fitted_coeffs[-2]
                     y_intercept         = np.polyval(fitted_coeffs, 0)
@@ -227,7 +231,7 @@ class measure_gain_RN:
             plt.xlim(lim)
             plt.ylim([0, np.ceil(max(n) + y_pad)])
             plt.legend(loc='upper left', fontsize=10)
-            if self.params['fits']:
+            if self.params['hard']:
                 plt.savefig("rn.eps")   
 
             logger.info("Calculated CDS RN is " + str(sf(popt[1], 3)) + "e-.")            
@@ -270,7 +274,7 @@ if __name__ == "__main__":
     group1.add_option('--log', action='store', default='DEBUG', dest='logLevel', type=str, help='log level (DEBUG|INFO|WARNING|ERROR|CRITICAL)')      
     group1.add_option('--glo', action='store', default=0, type=int, dest='minGrpNum', help='lowest group number to use (method==UTR only)')
     group1.add_option('--ghi', action='store', default=20, type=int, dest='maxGrpNum', help='highest group number to use (method==UTR only)')
-    group1.add_option('--r', action='store', dest='fit', default="0,10000", help='ADU range to consider when fitting')
+    group1.add_option('--r', action='store', dest='fit', default="0,5000", help='ADU range to consider when fitting')
     group1.add_option('--c', action='store', default=1, type=float, dest='fitCoeff', help='Coeffient of fit to signal')
     group1.add_option('--win', action='store', dest='windowSize', default=50, type=int, help='size of window to use (px)')  
     group1.add_option('--hard', action='store_true', dest='hard', help='make hard plot?')    

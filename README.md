@@ -16,6 +16,10 @@ Requires:
 * sExtractor > yum install sextractor
 * Any additional python modules will be indicated on execution of the pipeline. Use "pip install [package]" to install them into the default dir
 
+Notes:
+
+* You will need to move src/sm/robust/norms.py to your local copy of statsmodels (robust/). This hasn't been included the distribution as the extensions need to be built separately.
+
 # Running from lt-qc
 
 [data@lt-qc ~/rmb]$ set IOI\_PIPE\_BASE = /usr/local/bin/ioi\_pipeline
@@ -115,12 +119,9 @@ A cursory glance over raw array data and you'll see that there are a few notable
 
 vi) **SKY SUBTRACTION**.
 
-A median sky is constructed from ALL the combined frames available (corresponding to one per dither). When making the median sky image, each combined frame has its average sky value OFFSET to a reference average value. The sky values are found by iteratively sigma clipping the science images (sigma = 3 = pipeline.ini > sky\_subtraction > bg\_sigma\_clip). The offset is achieved by taking the mean of this clipped dataset, and differencing it by the mean of reference sky frame values to find an offset factor which is then applied to the science image. The reference sky frame values are taken as the sky values of the first combined frame, i.e. there is no offset for the first dither position in the sequence.
-
-When subtracting the sky contribution from each combined frame, the median sky is offset again: sigma clip the science frame to find the sky values, take the mean, then difference it by the mean of the constructed median sky. The offset median sky is then subtracted off.
+The sky is constructed using either a median or more robust estimators (Tukey, HuberT) to combine either all frames or only a frame's peers. Sky images are constructed on a per dither basis by offsetting each background to a reference average value (of the frame being considered). The background is found by iteratively sigma clipping the science images (sigma = 3 = pipeline.ini > sky\_subtraction > bg\_sigma\_clip). The offset is achieved by taking the mean of this clipped dataset, and differencing it by the mean of reference sky frame values to find an offset factor which is then applied to the science image. The sky can then be subtracted off.
 
 Any cold/hot pixels in the array will propagate through to the final median sky. If bad pixel masking has been selected, then each NaN in the array is locally median smoothed (box size = 5 = pipeline.ini > sky\_subtraction > smoothing\_box\_size).
-
 
 vii) **IMAGE REGISTRATION/STACKING**.
 

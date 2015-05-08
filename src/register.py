@@ -91,7 +91,7 @@ class register():
             if id.ok == True:
                 tmp_outPath         = workDir + "tmp_" + str(idx) + ".trans.fits"
                 tmp_mask_outPath    = workDir + "tmp_" + str(idx) + ".trans.mask.fits"
-                # Variant 1, using only scipy and the simple affine transform:
+                # variant 1, using only scipy and the simple affine transform:
                 if algorithm == "SCIPY":
                     # science data
                     alipy.align.affineremap(tmp_filenames[idx], id.trans, shape=outputshape, alifilepath=tmp_outPath, verbose=False, fitgeom=fit_geom)
@@ -101,7 +101,7 @@ class register():
                         alipy.align.affineremap(tmp_mask_filenames[idx], id.trans, shape=outputshape, alifilepath=tmp_mask_outPath, verbose=False, fitgeom=fit_geom)
                         self.logger.info("[register.execute] Created shifted bad pixel mask frame " + os.path.basename(tmp_mask_outPath) + ".")                    
                 elif algorithm =="IRAF":
-                # Variant 2, using geomap/gregister:
+                # variant 2, using geomap/gregister:
                     import pyraf
                     alipy.align.irafalign(tmp_filenames[idx], id.uknmatchstars, id.refmatchstars, shape=outputshape, alifilepath=tmp_outPath, makepng=False, verbose=False, fitgeom=fit_geom) 
                     self.logger.info("[register.execute] Created shifted frame " + os.path.basename(tmp_outPath) + ".")

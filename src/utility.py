@@ -12,6 +12,7 @@ import collections
 from FITSFile import read, write
 from errors import errors
 import pyfits
+import math
 
 def find_LT_files(dataPath, runNum, dithNum, minExpNum, maxExpNum, date, logger, errors):
     '''
@@ -176,6 +177,13 @@ def read_ini(path):
         for option in ini.options(section):
             cfg[section][option] = str(ini.get(section, option))  
     return cfg
+  
+def sf(num, sig_figs):
+    try:
+        rtn = round(num, -int(math.floor(math.log10(abs(num))) - (sig_figs - 1)))
+        return rtn
+    except ValueError:
+        return 0.  
  
 def sort_files_by_FITS_key(files, key, logger, errors):
     key_values = []

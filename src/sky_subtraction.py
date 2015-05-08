@@ -45,14 +45,16 @@ class sky_subtraction():
                 
         self.data_sky = data_interpolated
            
-    def make_sky_frame(self, in_datas, idx_of_current_frame, sigma, interpolate_bad, smoothing_box_size, make_algorithm, max_iter, peers_only, hard, out):   
+    def make_sky_frame(self, in_datas, idx_of_current_frame, sigma, interpolate_bad, smoothing_box_size, make_algorithm, max_iter, peers_only, max_robust_unsolved_percentage, hard, out):   
         datas = copy.deepcopy(in_datas)
         data_tmp = []
         
         # define reference as the current frame (this is what we'll be level shifting to)
         ref_sky_2d = datas[idx_of_current_frame]
         
+        # RMS of difference frames is required for input as scale to robust estimators.
         RMS_sky = []                                # need this for HUBER/TUKEY prior.
+        
         for idx, data_2d in enumerate(datas):       # for each dither (==data_2d) 
             if idx == idx_of_current_frame:
                 if peers_only:     
@@ -72,7 +74,7 @@ class sky_subtraction():
                 offset = np.mean(clipped_sky_values)
                 
                 # calculate difference sky RMS
-                RMS_sky.append(np.std(sky_diff_1d_nonan))
+                RMS_sky.append(np.std(clipped_sky_values))
                         
             self.logger.info("[sky_subtraction.make_sky_frame] Offset between sky values of frame " + str(idx_of_current_frame+1) + " and sky values of frame " + str(idx+1) + " is " + str(offset) + " ADU.")
 
@@ -82,14 +84,17 @@ class sky_subtraction():
         # calculate scale parameter for robust estimators
         robust_scale = np.median(RMS_sky)/pow(2, 0.5)
         
-        # construct sky. if using a robust estimator, then fallback to median under non-convergence (return == None)
+        # construct sky. 
+        '''
+            If using a robust estimator, then fallback to median under significant non-convergence (return == None)
+        '''
         if make_algorithm == 'MEDIAN':
             self.logger.info("[sky_subtraction.make_sky_frame] Applying median to make average sky.")
             self.data_sky = np.median(data_tmp, axis=0)               
         elif make_algorithm == 'TUKEY':
             self.logger.info("[sky_subtraction.make_sky_frame] Applying TukeyBiweight() to make average sky.")
             self.logger.info("[sky_subtraction.make_sky_frame] Using " + str(robust_scale) + "ADU as scale parameter.")
-            self.data_sky = tukey_biweight(data_tmp, scale=robust_scale, axis=0, max_iter=max_iter, logger=self.logger)   
+            self.data_sky = tukey_biweight(data_tmp, scale=robust_scale, axis=0, max_iter=max_iter, max_robust_unsolved_percentage=max_robust_unsolved_percentage, logger=self.logger)   
             if self.data_sky is None:
                 self.logger.info("[sky_subtraction.make_sky_frame] Failed to converge. Falling back to median.")
                 self.logger.info("[sky_subtraction.make_sky_frame] Applying median to make average sky.")
@@ -97,7 +102,7 @@ class sky_subtraction():
         elif make_algorithm == 'HUBER':
             self.logger.info("[sky_subtraction.make_sky_frame] Applying HuberT() to make average sky.")
             self.logger.info("[sky_subtraction.make_sky_frame] Using " + str(robust_scale) + "ADU as scale parameter.")
-            self.data_sky = huberT(data_tmp, scale=robust_scale, axis=0, max_iter=max_iter, logger=self.logger) 
+            self.data_sky = huberT(data_tmp, scale=robust_scale, axis=0, max_iter=max_iter, max_robust_unsolved_percentage=max_robust_unsolved_percentage, logger=self.logger) 
             if self.data_sky is None:
                 self.logger.info("[sky_subtraction.make_sky_frame] Failed to converge. Falling back to median.")
                 self.logger.info("[sky_subtraction.make_sky_frame] Applying median to make average sky.")

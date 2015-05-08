@@ -74,7 +74,8 @@ class run_pipe():
             ss_bg_sigma_clip                    = float(pipe_cfg['sky_subtraction']['bg_sigma_clip'])
             ss_peers_only                       = bool(int(pipe_cfg['sky_subtraction']['peers_only']))
             ss_make_algorithm                   = str(pipe_cfg['sky_subtraction']['make_algorithm'])
-            ss_max_iterations                   = int(pipe_cfg['sky_subtraction']['max_iterations'])
+            ss_max_robust_iterations            = int(pipe_cfg['sky_subtraction']['max_robust_iterations'])
+            ss_max_robust_unsolved_percentage   = float(pipe_cfg['sky_subtraction']['max_robust_unsolved_percentage'])
             ss_hard                             = bool(int(pipe_cfg['sky_subtraction']['hard']))
             ss_quit                             = bool(int(pipe_cfg['sky_subtraction']['quit'])) 
             ## registration
@@ -305,8 +306,8 @@ class run_pipe():
                                 logger.info("[run_pipe.go] Constructing sky frame.")
                                 this_outPath = params['workingDir'] + "comb_sky_" + str(idx_1+params['minRunNum']) + '_' + str(idx_2+params['minDithNum']) + ".fits"
                                 data_sky = ss.make_sky_frame(in_datas=self.session.file_data_nonss[idx_1], idx_of_current_frame=idx_2, sigma=ss_bg_sigma_clip, interpolate_bad=do_bp_masking, \
-                                                             smoothing_box_size=ss_smoothing_box_size, make_algorithm=ss_make_algorithm, max_iter=ss_max_iterations, peers_only=ss_peers_only, \
-                                                             hard=ss_hard, out=this_outPath)                         
+                                                             smoothing_box_size=ss_smoothing_box_size, make_algorithm=ss_make_algorithm, max_iter=ss_max_robust_iterations, peers_only=ss_peers_only, \
+                                                             max_robust_unsolved_percentage=ss_max_robust_unsolved_percentage, hard=ss_hard, out=this_outPath)                         
                                 logger.info("[run_pipe.go] Subtracting sky frame.")      
                                 ### subtract sky
                                 rtn_data, rtn_hdr = ss.sub_sky(in_data=self.session.file_data_nonss[idx_1][idx_2], in_hdr=self.session.file_hdr_nonss[idx_1][idx_2], \

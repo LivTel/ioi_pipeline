@@ -450,7 +450,7 @@ if __name__ == "__main__":
     group2 = optparse.OptionGroup(parser, "LT specific general parameters")    
     group2.add_option('--d', action='store', dest='date', default='*', type=str, help='date (YYYYMMDD)')
     group2.add_option('--dlo', action='store', dest='minDithNum', default=1, type=int, help='minimum dither number')
-    group2.add_option('--dhi', action='store', dest='maxDithNum', default=9, type=int, help='maximum dither number')  
+    group2.add_option('--dhi', action='store', dest='maxDithNum', default=999, type=int, help='maximum dither number')  
     parser.add_option_group(group2)
 
     group3 = optparse.OptionGroup(parser, "Teledyne specific general parameters")    

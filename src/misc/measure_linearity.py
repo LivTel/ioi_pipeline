@@ -134,7 +134,7 @@ class measure_linearity:
             # 5% RESIDUAL nonlinearity line
             plt.plot([0, 70000], [5, 5] , 'k--', label="5% nonlinearity")   
             
-            plt.title("Residual Nonlinearity")
+            #plt.title("Residual Nonlinearity")
             plt.xlabel("CDS mean counts (ADU)")
             plt.ylabel("Nonlinearity %")
             plt.legend(loc='lower right', fontsize=10)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     
     parser = optparse.OptionParser()
     group1 = optparse.OptionGroup(parser, "General")
-    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/14/', dest='dataPath', type=str, help='path to data')
+    group1.add_option('--p', action='store', default='/mnt/NAS/devel/IOI/images_and_analysis/remote_5/images/15/', dest='dataPath', type=str, help='path to data')
     group1.add_option('--wd', action='store', default='test', dest='workingDir', type=str, help='path to working directory')
     group1.add_option('--o', action='store_true', dest='clobber', help='clobber working directory?')
     group1.add_option('--pa', action='store', default='../../config/paths_rmb.ini', type=str, dest='pathsCfgPath', help='path to paths config file')    

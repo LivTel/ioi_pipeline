@@ -68,11 +68,11 @@ Some notes:
 
 i) **REFERENCE PIXEL SUBTRACTION**.
 
-The array contains 4 rows (and columns, but I don't use these in the subtraction scheme i'm using at the moment) adjacent to each border of the array that are connected to readout, but are not active (reference pixels). We are operating in 32 output mode, so the 2048 pixel array "width" is split into 64 bit sections, each read out through one output.
+The array contains 4 rows (and columns, but I don't use these in the subtraction scheme i'm using at the moment) adjacent to each border of the array that are connected to readout, but are not active (reference pixels). We are operating in 32 output mode, so the 2048 pixel array "width" is split into 64 sections, each read out through one output.
 
 For each section, I fit a slope to the mean of the top and bottom reference pixels (in actuality, I create two ramps per section, one for odd numbered pixels and one for even). For each pixel in the section, I evaluate the "bias" contribution using this slope, and subtract it off. I call this mode "RAMP" in the config/pipeline.ini file.
 
-There is also a "CONSTANT" mode, which as the name suggests, takes the mean for each section of BOTH the top and bottom reference pixels, and subtracts.
+There is also a "CONSTANTOFF" mode, which as the name suggests, takes the mean for each section of BOTH the top and bottom reference pixels, and subtracts.
 
 "COLUMN" mode was an attempt at trying to remove low frequency banding along the vertical axis of the array. In short, it uses the left and right border reference pixels, smooths the data with a gaussian kernel, and subtracts. It worked to an extent but only had a marginal improvement data quality, so in the interests of simplicity I dropped it.
 

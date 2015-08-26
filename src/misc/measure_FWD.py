@@ -114,7 +114,7 @@ class measure_FWD:
         plt.xlabel("EXPTIME (s)")
         plt.ylabel("Mean counts (ADU)")
         plt.xlim([0, max(inttime)])    
-        plt.ylim([0,66000])
+        plt.ylim([0,60000])
         plt.legend(loc='lower right', fontsize=11)
         
         plt.ticklabel_format(axis='y',style='sci',scilimits=(1,3))   

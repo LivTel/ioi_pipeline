@@ -299,8 +299,7 @@ class run_pipe():
                             self.session.add_amend_opt_header('L1SKYSUB', 1, 'sky subtracted')
                             self.session.file_ext = self.session.file_ext + ".ss"  
                             for idx_2, f in enumerate(run):
-                                logger.info("[run_pipe.go] Subtracting sky from run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))  
-                                this_outPath = params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits"  
+                                logger.info("[run_pipe.go] Subtracting sky from run:" + str(idx_1+params['minRunNum']) + ", dither:" + str(idx_2+params['minDithNum']))   
                                 
                                 ss = sky_subtraction(logger, err)
                                 logger.info("[run_pipe.go] Constructing sky frame.")
@@ -310,6 +309,7 @@ class run_pipe():
                                                              max_robust_unsolved_percentage=ss_max_robust_unsolved_percentage, hard=ss_hard, out=this_outPath)                         
                                 logger.info("[run_pipe.go] Subtracting sky frame.")      
                                 ### subtract sky
+                                this_outPath = params['workingDir'] + "comb_sky_sub_" + str(idx_1+params['minRunNum']) + '_' + str(idx_2+params['minDithNum']) + ".fits"
                                 rtn_data, rtn_hdr = ss.sub_sky(in_data=self.session.file_data_nonss[idx_1][idx_2], in_hdr=self.session.file_hdr_nonss[idx_1][idx_2], \
                                                                sigma=ss_bg_sigma_clip, hard=ss_hard, out=this_outPath, opt_hdr=self.session.opt_hdr)                     
                                 if rtn_data is not None and rtn_hdr is not None:
@@ -348,8 +348,8 @@ class run_pipe():
                             this_outPaths = []
                             this_mask_outPaths = []
                             for idx_2, d in enumerate(run):
-                                this_outPaths.append(params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits")
-                                this_mask_outPaths.append(params['workingDir'] + "comb_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".mask.fits")
+                                this_outPaths.append(params['workingDir'] + "comb_reg_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits")
+                                this_mask_outPaths.append(params['workingDir'] + "comb_reg_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".mask.fits")
                             rtn_datas, rtn_hdrs = reg.execute(registration_algorithm, params['workingDir'], fit_geom=registration_fit_geometry, bp_post_reg_thresh=bp_post_reg_thresh, \
                                                               hard=registration_hard, outs=this_outPaths, mask_outs=this_mask_outPaths)                   
                             if rtn_datas is not None and rtn_hdrs is not None:

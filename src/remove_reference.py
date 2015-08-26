@@ -56,7 +56,9 @@ class ref_subtraction:
         if method=="TRIM":
             pass
         elif method=="CONSTANT":
-            self._remove_constant(data, hdr)
+            self._remove_constant(data, hdr)          
+        elif method=="CONSTANTOFF":
+            self._remove_constant_off(data, hdr)
         elif method=="RAMP":
             self._remove_ramp(data, hdr)
         elif method=="COLUMN":
@@ -72,9 +74,21 @@ class ref_subtraction:
         if hard:
             self.logger.info("[ref_subtraction.execute] Writing file out to " + out)  
             write_FITS_file(out, data, hdr, opt_hdr=opt_hdr)          
-        return data, hdr  
-       
+        return data, hdr 
+      
     def _remove_constant(self, data, hdr):     
+        # REMOVE CONSTANT OFFSET
+        # --------------------------------
+        # Remove constant from the upper ref to lower ref pixels
+        # no output/odd-and-even distinction
+        ref_pix = []
+        ref_pix.append(data[1:4, :])          # miss off border reference pixels, these could be wrong
+        ref_pix.append(data[2044:2047, :])    # miss off border reference pixels, these could be wrong
+        ref_pix_mean  = np.mean(ref_pix)
+        data -= ref_pix_mean
+        return data, hdr      
+       
+    def _remove_constant_off(self, data, hdr):     
         # REMOVE CONSTANT PER OUTPUT OFFSET
         # --------------------------------
         # Remove constant from the upper ref to lower ref pixels
@@ -92,7 +106,7 @@ class ref_subtraction:
                     this_out_ref_pix_even.append(data[2044:2047, i])	# miss off border reference pixels, these could be wrong
                 elif i % 2 == 1:
                     this_out_ref_pix_odd.append(data[1:4, i])		# miss off border reference pixels, these could be wrong
-                    this_out_ref_pix_odd.append(data[2044:2047, i])	# miss off border reference pixels, these could be wrong     
+                    this_out_ref_pix_odd.append(data[2044:2047, i])	# miss off border reference pixels, these could be wrong   
 
             this_out_ref_pix_even_mean 	= np.mean(this_out_ref_pix_even)
             this_out_ref_pix_odd_mean 	= np.mean(this_out_ref_pix_odd) 
@@ -120,11 +134,11 @@ class ref_subtraction:
 
             for i in range(x_lo,x_hi):
                 if i % 2 == 0:
-                    this_out_lower_ref_pix_even.append(data[1:4, i])   	# miss off border reference pixels, these could be wrong
+                    this_out_lower_ref_pix_even.append(data[1:4, i])   	        # miss off border reference pixels, these could be wrong
                     this_out_upper_ref_pix_even.append(data[2044:2047, i])	# miss off border reference pixels, these could be wrong
                 elif i % 2 == 1:
-                    this_out_lower_ref_pix_odd.append(data[1:4, i])	# miss off border reference pixels, these could be wrong
-                    this_out_upper_ref_pix_odd.append(data[2044:2047, i])	# miss off border reference pixels, these could be wrong                        
+                    this_out_lower_ref_pix_odd.append(data[1:4, i])	        # miss off border reference pixels, these could be wrong
+                    this_out_upper_ref_pix_odd.append(data[2044:2047, i])	# miss off border reference pixels, these could be wrong            
  
             this_out_lower_ref_pix_even_mean = np.mean(this_out_lower_ref_pix_even)
             this_out_upper_ref_pix_even_mean = np.mean(this_out_upper_ref_pix_even)

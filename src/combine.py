@@ -93,7 +93,7 @@ class combine():
         d_1 = datas[0]                   
         d_2 = datas[1]   
         rates = (d_2 - d_1)/delta       # this returns cts/s
-        
+
         # calculate CDS for each fowler pair
         datas_diff = []
         exptimes = []

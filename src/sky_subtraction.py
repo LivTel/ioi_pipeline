@@ -90,7 +90,7 @@ class sky_subtraction():
         '''
         if make_algorithm == 'MEDIAN':
             self.logger.info("[sky_subtraction.make_sky_frame] Applying median to make average sky.")
-            self.data_sky = np.median(data_tmp, axis=0)               
+            self.data_sky = np.median(data_tmp, axis=0, overwrite_input=True)               
         elif make_algorithm == 'TUKEY':
             self.logger.info("[sky_subtraction.make_sky_frame] Applying TukeyBiweight() to make average sky.")
             self.logger.info("[sky_subtraction.make_sky_frame] Using " + str(robust_scale) + "ADU as scale parameter.")
@@ -98,7 +98,7 @@ class sky_subtraction():
             if self.data_sky is None:
                 self.logger.info("[sky_subtraction.make_sky_frame] Failed to converge. Falling back to median.")
                 self.logger.info("[sky_subtraction.make_sky_frame] Applying median to make average sky.")
-                self.data_sky = np.median(data_tmp, axis=0)                 
+                self.data_sky = np.median(data_tmp, axis=0, overwrite_input=True)                 
         elif make_algorithm == 'HUBER':
             self.logger.info("[sky_subtraction.make_sky_frame] Applying HuberT() to make average sky.")
             self.logger.info("[sky_subtraction.make_sky_frame] Using " + str(robust_scale) + "ADU as scale parameter.")
@@ -106,7 +106,7 @@ class sky_subtraction():
             if self.data_sky is None:
                 self.logger.info("[sky_subtraction.make_sky_frame] Failed to converge. Falling back to median.")
                 self.logger.info("[sky_subtraction.make_sky_frame] Applying median to make average sky.")
-                self.data_sky = np.median(data_tmp, axis=0)                 
+                self.data_sky = np.median(data_tmp, axis=0, overwrite_input=True)                 
         else:
             self.err.set_code(38, is_critical=True)
         

@@ -157,7 +157,8 @@ class run_pipe():
         else:
               logger.info("[run_pipe.go] No reference subtraction requested.")   
               self.session.add_amend_opt_header('L1REFSUB', 0, 'reference subtracted')
-        
+        run = dither = None		# descope
+
         # ---------------------------   
         # ---- frame combination ----   
         # ---------------------------       
@@ -207,8 +208,8 @@ class run_pipe():
                         self.session.file_hdr_nonss[idx_1][idx_2]       = rtn_hdr
                         self.session.rates[idx_1][idx_2]                = rtn_rates
                     else:
-                        err.set_code(6, is_critical=True)  
-      
+                        err.set_code(6, is_critical=True) 
+            run = dither = None				# descope
             self.session.free_file_data_and_hdr()	# purge file_data and file_hdr from memory
             self.session.free_rates()			# purge rates
 
@@ -242,7 +243,8 @@ class run_pipe():
                     return err.current_code    
             else:
                 logger.info("[run_pipe.go] No flatfielding requested.") 
-                self.session.add_amend_opt_header('L1FLAT', 0, 'flatfielded')           
+                self.session.add_amend_opt_header('L1FLAT', 0, 'flatfielded')      
+            run = f = None		# descope     
             
             # -------------------------------------  
             # -------- bad pixel masking  ---------   
@@ -278,9 +280,10 @@ class run_pipe():
                 logger.info("[run_pipe.go] No bad pixel masking requested.") 
                 self.session.add_amend_opt_header('L1BADPX', 0, 'bad pixel mask applied')   
             self.session.file_opt_hdr_nonss.append(collections.OrderedDict(self.session.opt_hdr))
+            run = f = None		# descope   
 
             if are_LT_files:     # these processes only make sense in the context of LT files. 
-              
+
                 self.session.copy_data_hdr_nonss_to_ss()        # make a copy of nonss session vars to ss.
                 
                 data    = self.session.file_data_nonss          # pointer to allow for option of ss or nonss data in registration/stacking.
@@ -330,6 +333,7 @@ class run_pipe():
                 else:
                     logger.info("[run_pipe.go] No sky subtraction requested.")     
                     self.session.add_amend_opt_header('L1SKYSUB', 0, 'sky subtracted') 
+                run = f = None		# descope  
                     
                 # -----------------------------------------  
                 # ---- SS image registration (LT only) ----   
@@ -364,6 +368,7 @@ class run_pipe():
                         if registration_quit: 
                             logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
                             return err.current_code    
+                    run = d = None		# descope  
                           
                     # -------------------------------------  
                     # ---- SS image stacking (LT only) ----   
@@ -388,7 +393,8 @@ class run_pipe():
                                         err.set_code(6, is_critical=True)             
                             self.session.file_opt_hdr_stk.append(collections.OrderedDict(self.session.opt_hdr))  
                         except RuntimeError:
-                            err.set_code(13, is_critical=True)   
+                            err.set_code(13, is_critical=True)  
+                        run = None		# descope 
 
                     else:
                         logger.info("[run_pipe.go] No stacking requested.")  

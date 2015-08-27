@@ -67,7 +67,7 @@ class register():
         for idx, d in enumerate(self.datas):   
             tmp_mask_filenames.append(tmp_mask_outPath)    
         return tmp_mask_filenames
-      
+  
     def execute(self, algorithm, workDir, fit_geom, bp_post_reg_thresh, hard, outs=None, mask_outs=None, keep_tmp=False):
         tmp_filenames = self._write_temporary_data_files(workDir)
         if mask_outs != None:

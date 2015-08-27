@@ -36,7 +36,7 @@ class read:
         get data from a specified HDU
         '''
         if self.hduList is not None:
-            self.data = self.hduList[HDU].data
+            self.data = self.hduList[HDU].data.astype(np.float16)
         else:
             return False   
           

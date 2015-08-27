@@ -16,7 +16,8 @@ class run_pipe():
         self.logger = logger
         self.err    = err
         self.session = None
-        
+     
+    @profile       
     def go(self):     
         params = self.params
         logger = self.logger

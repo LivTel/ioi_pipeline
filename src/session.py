@@ -100,7 +100,7 @@ class session:
                 for idx_2, f in enumerate(run): 
                     file_sections = os.path.basename(self.start_names[idx_1][idx_2][0]).split('_')
                     this_outPath = workingDir + '_'.join(file_sections[0:5]) + "_0_1.fits"
-                    if data[idx_1][idx_2] is None:
+                    if len(data[idx_1][idx_2]) == 0:
                         pass   
                     else:
                         write_FITS_file(data=data[idx_1][idx_2], hdr=hdr[idx_1][idx_2], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)
@@ -122,7 +122,7 @@ class session:
             for idx_1, run in enumerate(data):
                 file_sections = os.path.basename(self.start_names[idx_1][0][0]).split('_')
                 this_outPath = workingDir + '_'.join(file_sections[0:4]) + "_0_0_1.fits"
-                if data[idx_1] is None:
+                if len(data[idx_1]) == 0:
                     pass
                 else:
                     write_FITS_file(data=data[idx_1], hdr=hdr[idx_1], out=this_outPath, opt_hdr=opt_hdr[idx_1], allow_append=allow_append)

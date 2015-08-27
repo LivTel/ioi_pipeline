@@ -70,6 +70,13 @@ class session:
     def copy_data_hdr_nonss_to_ss(self):
         self.file_data_ss = copy.deepcopy(self.file_data_nonss)
         self.file_hdr_ss  = copy.deepcopy(self.file_hdr_nonss)
+
+    def free_file_data_and_hdr(self):
+        self.file_data = None
+        self.file_hdr  = None
+
+    def free_rates(self):
+        self.rates     = None
                                    
     def write_combined_data_as_LT(self, workingDir, extname, allow_append=False):  
         if extname == "IM_NONSS":

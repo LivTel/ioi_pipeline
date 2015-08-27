@@ -206,8 +206,11 @@ class run_pipe():
                         self.session.file_hdr_nonss[idx_1][idx_2]       = rtn_hdr
                         self.session.rates[idx_1][idx_2]                = rtn_rates
                     else:
-                        err.set_code(6, is_critical=True)        
-            
+                        err.set_code(6, is_critical=True)  
+      
+            self.session.free_file_data_and_hdr()	# purge file_data and file_hdr from memory
+            self.session.free_rates()			# purge rates
+
             if combination_quit:
                 logger.info("[run_pipe.go] Returning with code: " + str(err.current_code))
                 return err.current_code   

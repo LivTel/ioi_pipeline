@@ -19,7 +19,7 @@ class combine():
         if rtn_data is None or rtn_hdr is None:
             self.err.set_code(6, is_critical=True)  
         return rtn_data, rtn_hdr
-                   
+                  
     def execute(self, method, in_datas, in_hdrs, hard, lcor, out=None, f_pairs=1, opt_hdr={}, fowler_bodge=0):   
         datas = copy.deepcopy(in_datas)
         hdrs  = copy.deepcopy(in_hdrs)

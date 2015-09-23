@@ -16,8 +16,7 @@ class run_pipe():
         self.logger = logger
         self.err    = err
         self.session = None
-     
-    #@profile       
+           
     def go(self):     
         params = self.params
         logger = self.logger
@@ -209,6 +208,7 @@ class run_pipe():
                         self.session.rates[idx_1][idx_2]                = rtn_rates
                     else:
                         err.set_code(6, is_critical=True) 
+
             run = dither = None				# descope
             self.session.free_file_data_and_hdr()	# purge file_data and file_hdr from memory
             self.session.free_rates()			# purge rates

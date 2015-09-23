@@ -121,7 +121,7 @@ class session:
         if data is not None:
             for idx_1, run in enumerate(data):
                 file_sections = os.path.basename(self.start_names[idx_1][0][0]).split('_')
-                this_outPath = workingDir + '_'.join(file_sections[0:4]) + "_0_0_1.fits"
+                this_outPath = workingDir + '_'.join(file_sections[0:4]) + "_0_0_2.fits"
                 if len(data[idx_1]) == 0:
                     pass
                 else:

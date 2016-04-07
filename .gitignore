@@ -60,4 +60,5 @@ target/
 
 # test dir
 src/test/
+test/
 

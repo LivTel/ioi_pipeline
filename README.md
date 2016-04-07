@@ -19,7 +19,7 @@ or `sudo easy_install`, although see the notes about pyfits in **Known Issues**.
 
 The configuration files are kept in `config/`. There are two files: `paths.ini` and `pipeline.ini`. 
 
-The former defines paths [**path\_\***] to the base and various subdirectories. Typically only [**path\_base**] 
+The former defines paths to the base and various subdirectories. Typically only [**path\_base**] 
 should need to be altered as the other paths are defined relative to this. The two other subheadings, 
 [**flatfielding**] and [**nonlinearity_corrections**] define paths and files to be used in each of 
 the corresponding processes. The generation and use of these files is further discussed in the **An Overview of the Pipeline Process** 
@@ -99,7 +99,7 @@ This would mean that in your combined frames, a "0" value actually correspond to
 
 In the process above I correct for this by adding 1.4s worth of flux for each pixel (this has been done to the calibration frames also). This 1.4s of flux is derived in the same way the rate was derived for FRAME COMBINATION above.
 
-When generating the correction files, a bad pixel mask is also outputted. Bad pixels are defined as either a) no accumulation of charge with time, or b) having a percentage nonlinearity ((observed&corrected-actual)/actual)*100 > some threshold value (currently 0.8% - arbitrary but derived by looking at the distribution of linearity values). This file is defined in ([**nonlinearity\_correction.bad\_pix\_filename**] in `paths.ini`.
+When generating the correction files, a bad pixel mask is also outputted. Bad pixels are defined as either a) no accumulation of charge with time, or b) having a percentage nonlinearity ((observed&corrected-actual)/actual)*100 is greater than some threshold value (currently 0.8% - arbitrary but derived by looking at the distribution of linearity values). This file is defined in ([**nonlinearity\_correction.bad\_pix\_filename**] in `paths.ini`.
 
 The script used to make the current nonlinearity cube is `src/make_nonlinearity_cube.py`. 
 

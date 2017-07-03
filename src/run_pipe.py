@@ -83,6 +83,11 @@ class run_pipe():
             registration_algorithm              = str(pipe_cfg['registration']['registration_algorithm'].upper())
             registration_hard                   = bool(int(pipe_cfg['registration']['hard']))
             registration_fit_geometry           = str(pipe_cfg['registration']['fit_geometry'].lower())
+            registration_do_bad_region          = bool(int(pipe_cfg['registration']['do_bad_region']))
+            # Convert bad_region from string to an array of integers
+            # This is done so that the config file can look like a standard Python [] slice syntax
+            # Literal 'yfrom:yto,xfrom:xto' is converted to an int array [yfrom yto xfrom xto]
+            registration_bad_region             = [ int(i) for i in pipe_cfg['registration']['bad_region'].replace(':',',').split(',') ] 
             registration_quit                   = bool(int(pipe_cfg['registration']['quit'])) 
             ## stacking
             do_stacking                         = bool(int(pipe_cfg['stacking']['do']))
@@ -352,7 +357,7 @@ class run_pipe():
                             bp_combined_mask_data = None
                             if do_bp_masking:
                                 bp_combined_mask_data = bp.combine_masks()
-                            reg = register(0, data[idx_1], hdr[idx_1], bp_combined_mask_data, logger, err) 
+                            reg = register(0, data[idx_1], hdr[idx_1], bp_combined_mask_data, registration_do_bad_region, registration_bad_region, logger, err)
                             this_outPaths = []
                             this_mask_outPaths = []
                             for idx_2, d in enumerate(run):

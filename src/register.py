@@ -7,11 +7,13 @@ from utility import read_FITS_file, write_FITS_file
 import alipy
 
 class register():
-    def __init__(self, ref_image_idx, datas, hdrs, mask_data, logger, err):
+    def __init__(self, ref_image_idx, datas, hdrs, mask_data, do_bad_region, bad_region, logger, err):
         self.ref_image_idx   = ref_image_idx
         self.datas           = datas
         self.hdrs            = hdrs
         self.mask_data       = mask_data
+        self.do_bad_region   = do_bad_region
+        self.bad_region      = bad_region
         self.logger          = logger
         self.err             = err
         
@@ -49,10 +51,14 @@ class register():
         tmp_filenames = []
         for idx, d in enumerate(self.datas):
             this_tmp_outPath = workDir + "tmp_" + str(idx) + ".fits" 
-            write_FITS_file(out=this_tmp_outPath, data=np.nan_to_num(self.datas[idx]), hdr=self.hdrs[idx]) # convert NaN to number or scipy breaks \
+	    tempArray = np.copy(self.datas[idx])
+            if self.do_bad_region == 1:
+                # np.s_[] constructs a slice tuple for us from the yfrom,yto,xfrom,xto edges
+	        tempArray[ np.s_[self.bad_region[0]:self.bad_region[1],self.bad_region[2]:self.bad_region[3]] ] = 0
+            write_FITS_file(out=this_tmp_outPath, data=np.nan_to_num(tempArray), hdr=self.hdrs[idx]) # convert NaN to number or scipy breaks \
             tmp_filenames.append(this_tmp_outPath)    
         return tmp_filenames
-      
+
     def _write_temporary_mask_files(self, workDir):
         '''
         required if bad pixel masking is set

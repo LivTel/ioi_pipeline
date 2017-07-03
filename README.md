@@ -121,4 +121,5 @@ This routine uses alipy, which in turn uses sExtractor to make quads (similar to
 
 Stacking can either be done by taking the mean (**MEAN**), coadding (**COADD**) or taking the mean and multiplying by the number of dithers (**MEANANDSCALE**). This can be specified in [**stacking.method**] in `pipeline.ini`.
 
+Optionally (set **do_bad_region** in pipeline.ini) you can mask an array-aligned X,Y rectangular region to value 0 during the registration. Hard-coded to set the masked region to zero because this is typically after sky subtraction. The region is defined in the standard Python-style [] slice syntax. I.e., four integers yfrom:yto,xfrom:xto. E.g., mask bottom-left quarter of 1024x1024 FITS array is 0:512,0:512. That is 512, not 511. Do not include the [] since the actual slice will be created by np.s\_ from the four values provided. Note the masked version is only used to derive the registration and then discarded, not output as a science product.
 

@@ -7,13 +7,14 @@ from utility import read_FITS_file, write_FITS_file
 import alipy
 
 class register():
-    def __init__(self, ref_image_idx, datas, hdrs, mask_data, do_bad_region, bad_region, logger, err):
+    def __init__(self, ref_image_idx, datas, hdrs, mask_data, do_bad_region, bad_region1, bad_region2, logger, err):
         self.ref_image_idx   = ref_image_idx
         self.datas           = datas
         self.hdrs            = hdrs
         self.mask_data       = mask_data
         self.do_bad_region   = do_bad_region
-        self.bad_region      = bad_region
+        self.bad_region1      = bad_region1
+        self.bad_region2      = bad_region2
         self.logger          = logger
         self.err             = err
         
@@ -52,9 +53,13 @@ class register():
         for idx, d in enumerate(self.datas):
             this_tmp_outPath = workDir + "tmp_" + str(idx) + ".fits" 
 	    tempArray = np.copy(self.datas[idx])
-            if self.do_bad_region == 1:
-                # np.s_[] constructs a slice tuple for us from the yfrom,yto,xfrom,xto edges
-	        tempArray[ np.s_[self.bad_region[0]:self.bad_region[1],self.bad_region[2]:self.bad_region[3]] ] = 0
+            if self.do_bad_region >= 1:
+		self.logger.info("Do bad region1")
+		# np.s_[] constructs a slice tuple for us from the yfrom,yto,xfrom,xto edges
+		tempArray[ np.s_[self.bad_region1[0]:self.bad_region1[1],self.bad_region1[2]:self.bad_region1[3]] ] = 0
+            if self.do_bad_region >= 2:
+		self.logger.info("Do bad region2")
+		tempArray[ np.s_[self.bad_region2[0]:self.bad_region2[1],self.bad_region2[2]:self.bad_region2[3]] ] = 0
             write_FITS_file(out=this_tmp_outPath, data=np.nan_to_num(tempArray), hdr=self.hdrs[idx]) # convert NaN to number or scipy breaks \
             tmp_filenames.append(this_tmp_outPath)    
         return tmp_filenames
@@ -79,16 +84,18 @@ class register():
         if mask_outs != None:
             tmp_mask_filenames = self._write_temporary_mask_files(workDir)
         try:
-            identifications = alipy.ident.run(tmp_filenames[self.ref_image_idx], tmp_filenames, visu=False, verbose=False)
+            identifications = alipy.ident.run(tmp_filenames[self.ref_image_idx], tmp_filenames, visu=False, verbose=False, sexkeepcat=False)
         except RuntimeError:
-            self.err.set_code(18 ,is_critical=True)
+	    self.logger.info("[register.execute] Image resistration has failed. Runtime error from alipy.")
+            self.err.set_code(18 ,is_critical=False)
             
         for id in identifications:
             if id.ok == True:
                 self.logger.info("[register.execute] Found transform for " + str(id.ukn.name) + ". ")
                 self.logger.info("[register.execute] " + str(id.trans))
             else:
-                self.err.set_code(18, is_critical=True)
+		self.logger.info("[register.execute] Image resistration failed for " + str(id.ukn.name) + ". ")
+                self.err.set_code(18, is_critical=False)
 
         datas = []
         hdrs  = []

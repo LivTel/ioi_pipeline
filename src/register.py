@@ -79,12 +79,12 @@ class register():
             tmp_mask_filenames.append(tmp_mask_outPath)    
         return tmp_mask_filenames
   
-    def execute(self, algorithm, workDir, fit_geom, bp_post_reg_thresh, hard, outs=None, mask_outs=None, keep_tmp=False):
+    def execute(self, algorithm, workDir, fit_geom, bp_post_reg_thresh, hard, outs=None, mask_outs=None, keep_tmp=False, sexconfig=None):
         tmp_filenames = self._write_temporary_data_files(workDir)
         if mask_outs != None:
             tmp_mask_filenames = self._write_temporary_mask_files(workDir)
         try:
-            identifications = alipy.ident.run(tmp_filenames[self.ref_image_idx], tmp_filenames, visu=False, verbose=False, sexkeepcat=False)
+            identifications = alipy.ident.run(tmp_filenames[self.ref_image_idx], tmp_filenames, visu=False, verbose=False, sexkeepcat=False, sexconfig=sexconfig)
         except RuntimeError:
 	    self.logger.info("[register.execute] Image resistration has failed. Runtime error from alipy.")
             self.err.set_code(18 ,is_critical=False)

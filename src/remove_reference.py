@@ -150,6 +150,9 @@ class ref_subtraction:
         
             thisOffsetEven = np.polyval(coeffs_even, range(0,2048))
             thisOffsetOdd = np.polyval(coeffs_odd, range(0,2048))
+            # The following two "data[0:2048, i] -= thisOffsetXxx" lines throw a casting deprecation warning at runtime 
+            # and I cannot figure out why. The error only appears on teh first pass, when i==0 for the first image. Subsequent images
+            # do not give the error.
             for i in range(x_lo,x_hi):
                 if i % 2 == 0:
                     data[0:2048, i] -= thisOffsetEven

@@ -80,10 +80,11 @@ class run_pipe():
             ss_quit                             = bool(int(pipe_cfg['sky_subtraction']['quit'])) 
             ## registration
             do_registration                     = bool(int(pipe_cfg['registration']['do'])) 
+            registration_use_sexconfig          = bool(int(pipe_cfg['registration']['use_sexconfig']))
+            registration_sexconfig              = full_path_config+str(pipe_cfg['registration']['sexconfig_filename'])
             registration_algorithm              = str(pipe_cfg['registration']['registration_algorithm'].upper())
             registration_hard                   = bool(int(pipe_cfg['registration']['hard']))
             registration_fit_geometry           = str(pipe_cfg['registration']['fit_geometry'].lower())
-            #registration_do_bad_region          = bool(int(pipe_cfg['registration']['do_bad_region']))
             registration_do_bad_region          = int(int(pipe_cfg['registration']['do_bad_region']))
             # Convert bad_region from string to an array of integers
             # This is done so that the config file can look like a standard Python [] slice syntax
@@ -98,6 +99,7 @@ class run_pipe():
         except KeyError, e:
             logger.info("[run_pipe.go] Key/section " + str(e) + " appears to be missing.")
             err.set_code(8, is_critical=True)
+
             
         # ----------------------
         # ---- print header ----
@@ -110,6 +112,15 @@ class run_pipe():
         logger.info("[run_pipe.go] Using paths config: " + os.path.abspath(params['pathsCfgPath']))
         logger.info("[run_pipe.go] Using pipeline config: " + os.path.abspath(params['pipeCfgPath']))
    
+        # ----------------------------------------------
+        # ---- Tests on config parameters' validity ----
+        # ----------------------------------------------
+        if (not registration_use_sexconfig) or (not os.path.isfile(registration_sexconfig)):
+            registration_sexconfig = None
+            logger.info("[run_pipe.go] Not using sexconfig for image registration. Will use built-in defaults.")
+        else:
+            logger.info("[run_pipe.go] Using "+registration_sexconfig+" for image registration")
+
         # ----------------------------
         # ---- find files in path ----
         # ---------------------------- 
@@ -366,7 +377,7 @@ class run_pipe():
                                 this_outPaths.append(params['workingDir'] + "comb_reg_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".fits")
                                 this_mask_outPaths.append(params['workingDir'] + "comb_reg_" + str(idx_1+params['minRunNum']) + "_" + str(idx_2+params['minDithNum']) + self.session.file_ext + ".mask.fits")
                             rtn_datas, rtn_hdrs = reg.execute(registration_algorithm, params['workingDir'], fit_geom=registration_fit_geometry, bp_post_reg_thresh=bp_post_reg_thresh, \
-                                                              hard=registration_hard, outs=this_outPaths, mask_outs=this_mask_outPaths)                   
+                                                              hard=registration_hard, outs=this_outPaths, mask_outs=this_mask_outPaths, sexconfig=registration_sexconfig)
                             if rtn_datas is not None and rtn_hdrs is not None:
                                     self.session.file_data_reg[idx_1] = rtn_datas            
                                     self.session.file_hdr_reg[idx_1]  = rtn_hdrs                          

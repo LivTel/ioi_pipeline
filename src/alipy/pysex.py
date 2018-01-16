@@ -26,17 +26,17 @@ def _check_files(conf_file, conf_args, verbose=True):
 	if conf_file is None:
 		os.system("sex -d > .pysex.sex")
 		conf_file = '.pysex.sex'
-	if not conf_args.has_key('FILTER_NAME') or not os.path.isfile(conf_args['FILTER_NAME']):
-		if verbose:
+	        if not conf_args.has_key('FILTER_NAME') or not os.path.isfile(conf_args['FILTER_NAME']):
+		    if verbose:
 			print 'No filter file found, using default filter'
-		f = open('.pysex.conv', 'w')
-		print>>f, """CONV NORM
+		    f = open('.pysex.conv', 'w')
+		    print>>f, """CONV NORM
 # 3x3 ``all-ground'' convolution mask with FWHM = 2 pixels.
 1 2 1
 2 4 2
 1 2 1"""
-		f.close()
-		conf_args['FILTER_NAME'] = '.pysex.conv'
+		    f.close()
+		    conf_args['FILTER_NAME'] = '.pysex.conv'
 	if not conf_args.has_key('STARNNW_NAME') or not os.path.isfile(conf_args['STARNNW_NAME']):
 		if verbose:
 			print 'No NNW file found, using default NNW config'
@@ -107,7 +107,6 @@ def _cleanup():
 	for f in files:
 		os.remove(f)
 
-#def run(image='', imageref='', params=[], conf_file=DEFAULT_CONF, conf_args={}):
 def run(image='', imageref='', params=[], conf_file=None, conf_args={}, keepcat=True, rerun=False, catdir=None):
 	"""
 	Run sextractor on the given image with the given parameters.

@@ -203,7 +203,7 @@ class Identification:
 
 
 
-def run(ref, ukns, hdu=0, visu=True, skipsaturated=False, r = 5.0, n=500, sexkeepcat=False, sexrerun=True, verbose=True):
+def run(ref, ukns, hdu=0, visu=True, skipsaturated=False, r = 5.0, n=500, sexkeepcat=False, sexrerun=True, sexconfig=None, verbose=True):
 	"""
 	Top-level function to identify transorms between images.
 	Returns a list of Identification objects that contain all the info to go further.
@@ -232,6 +232,10 @@ def run(ref, ukns, hdu=0, visu=True, skipsaturated=False, r = 5.0, n=500, sexkee
 	:param sexrerun: Put this to False if you want me to check if I have some previously kept catalogs (with sexkeepcat=True),
 		instead of running SExtractor again on the images.
 	:type sexrerun: boolean
+
+	:param sexconfig: Name of SExtractor config file to use when running SExtractor. Default value "None" means alipy.pysex will
+                use its own defaults
+	:type sexconfig: string
 	
 	.. todo:: Make this guy accept existing asciidata catalogs, instead of only FITS images.
 
@@ -241,7 +245,7 @@ def run(ref, ukns, hdu=0, visu=True, skipsaturated=False, r = 5.0, n=500, sexkee
 	if verbose:
 		print 10*"#", " Preparing reference ..."
 	ref = imgcat.ImgCat(ref, hdu=hdu)
-	ref.makecat(rerun=sexrerun, keepcat=sexkeepcat, verbose=verbose)
+	ref.makecat(rerun=sexrerun, keepcat=sexkeepcat, conf_file=sexconfig, verbose=verbose)
 	ref.makestarlist(skipsaturated=skipsaturated, n=n, verbose=verbose)
 	if visu:
 		ref.showstars(verbose=verbose)
@@ -255,7 +259,7 @@ def run(ref, ukns, hdu=0, visu=True, skipsaturated=False, r = 5.0, n=500, sexkee
 			print 10*"#", "Processing %s" % (ukn)
 		
 		ukn = imgcat.ImgCat(ukn, hdu=hdu)
-		ukn.makecat(rerun=sexrerun, keepcat=sexkeepcat, verbose=verbose)
+		ukn.makecat(rerun=sexrerun, keepcat=sexkeepcat, conf_file=sexconfig, verbose=verbose)
 		ukn.makestarlist(skipsaturated=skipsaturated, n=n, verbose=verbose)
 		if visu:
 			ukn.showstars(verbose=verbose)
